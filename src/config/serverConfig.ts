@@ -87,6 +87,6 @@ export const validateConfig = () => {
     console.warn('Warning: CORS is set to allow all origins in production');
   }
 };
-console.log("Firebase Config:", SERVER_CONFIG.FIREBASE);
+// console.log("Firebase Config:", SERVER_CONFIG.FIREBASE);
 
 export default SERVER_CONFIG;

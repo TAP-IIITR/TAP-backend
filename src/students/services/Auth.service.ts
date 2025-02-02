@@ -4,6 +4,7 @@ import { IStudent } from '../interfaces/IStudent';
 import { generateJWT } from '../../utils/jwt';
 import { sendEmailVerification, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import { CustomError } from '../../errors/Custom-Error';
 
 export class AuthService implements IAuthService {
   constructor(private authRepository: IAuthRepository) {}
@@ -12,7 +13,11 @@ export class AuthService implements IAuthService {
     try {
       const existingStudent = await this.authRepository.findByEmail(student.regEmail);
       if (existingStudent) {
-        throw new Error('Student already exists');
+        throw new CustomError(
+          'Registration failed',
+          400,
+          [{ message: 'Student with this email already exists' }]
+        );
       }
       
       const newStudent = await this.authRepository.create(student);
@@ -20,8 +25,14 @@ export class AuthService implements IAuthService {
       
       return { id: newStudent.id!, token };
     } catch (error) {
-      console.error('Error in register:', error);
-      throw new Error('Registration failed');
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      throw new CustomError(
+        'Registration failed',
+        500,
+        [{ message: 'Internal server error during registration' }]
+      );
     }
   }
 
@@ -29,14 +40,22 @@ export class AuthService implements IAuthService {
     try {
       const student = await this.authRepository.findByEmail(email);
       if (!student) {
-        throw new Error('Student not found');
+        throw new CustomError(
+          'Login failed',
+          404,
+          [{ message: 'Student with this email does not exist' }]
+        );
       }
 
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       if (!userCredential.user.emailVerified) {
         await sendEmailVerification(userCredential.user);
-        throw new Error('Email not verified. Verification email sent.');
+        throw new CustomError(
+          'Email verification required',
+          403,
+          [{ message: 'Email not verified. Verification email has been sent.' }]
+        );
       }
 
       await this.authRepository.updateEmailVerificationStatus(email);
@@ -44,8 +63,21 @@ export class AuthService implements IAuthService {
       const token = generateJWT({ id: userCredential.user.uid, role: 'student' });
       return { id: userCredential.user.uid, token };
     } catch (error) {
-      console.error('Error in login:', error);
-      throw new Error('Login failed');
+      if (error instanceof CustomError) {
+        throw error;
+      }
+      if ((error as any).code === 'auth/wrong-password') {
+        throw new CustomError(
+          'Login failed',
+          401,
+          [{ message: 'Invalid password' }]
+        );
+      }
+      throw new CustomError(
+        'Login failed',
+        500,
+        [{ message: 'Internal server error during login' }]
+      );
     }
   }
 
