@@ -1,17 +1,10 @@
-export class CustomError extends Error {
-  constructor(
-    public message: string,
-    public statusCode: number,
-    public errors: { message: string }[] = []
-  ) {
+export abstract class CustomError extends Error {
+  abstract statusCode: number;
+
+  constructor(message: string) {
     super(message);
     Object.setPrototypeOf(this, CustomError.prototype);
   }
 
-  serializeErrors() {
-    return {
-      statusCode: this.statusCode,
-      errors: this.errors.length > 0 ? this.errors : [{ message: this.message }]
-    };
-  }
+  abstract serializeErrors(): { message: string; field?: string }[];
 }

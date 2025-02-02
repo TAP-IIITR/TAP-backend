@@ -1,18 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
+import { RequestValidationError } from '../errors/Request-Validation-Error';
 
 export const validateRequest = (
   req: Request, 
   res: Response, 
   next: NextFunction
 ) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-     res.status(400).json({
-      success: false,
-      errors: errors.array().map(err => err.msg)
-    });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new RequestValidationError(errors.array());
+    }
+  } catch (error) {
+    next(error);
   }
-  else 
-  next();
 };
