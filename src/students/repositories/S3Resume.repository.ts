@@ -3,6 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { IResumeRepository } from '../interfaces/IResumeRepository';
 import { CustomError } from '../../errors/Custom-Error';
+import { BadRequestError } from '../../errors/Bad-Request-Error';
 
 export class S3ResumeRepository implements IResumeRepository {
   private s3Client: S3Client;
@@ -33,7 +34,7 @@ export class S3ResumeRepository implements IResumeRepository {
     try {
       // Create a unique key for the file
       const timestamp = Date.now();
-      const key = `resumes/${studentId}/${timestamp}.pdf`;
+      const key = `resumes/${studentId}/latest.pdf`;
 
       // Create the PUT command with specific parameters
       const putObjectCommand = new PutObjectCommand({
@@ -52,11 +53,7 @@ export class S3ResumeRepository implements IResumeRepository {
       return signedUrl;
     } catch (error) {
       console.error('Error generating upload URL:', error);
-      throw new CustomError(
-        'S3 Error',
-        500,
-        [{ message: 'Failed to generate upload URL' }]
-      );
+      throw new BadRequestError('S3 error');
     }
   }
 
@@ -73,11 +70,8 @@ export class S3ResumeRepository implements IResumeRepository {
       await this.s3Client.send(command);
     } catch (error) {
       console.error('Error deleting resume:', error);
-      throw new CustomError(
-        'S3 Error',
-        500,
-        [{ message: 'Failed to delete resume' }]
-      );
+      throw new BadRequestError('S3 error');
+
     }
   }
 

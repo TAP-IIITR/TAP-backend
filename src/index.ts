@@ -1,4 +1,5 @@
 import express from "express";
+import 'express-async-errors';
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import { errorHandler } from "./middleware/Error-Handler-Middleware";

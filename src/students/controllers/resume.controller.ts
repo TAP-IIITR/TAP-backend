@@ -6,6 +6,9 @@ import { CustomError } from '../../errors/Custom-Error';
 import multer from 'multer';
 import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { NotFoundError } from '../../errors/Not-Found-Error';
+import { AuthError } from '../../errors/Auth-Error';
+import { BadRequestError } from '../../errors/Bad-Request-Error';
 
 // Configure multer for PDF files
 const storage = multer.memoryStorage();
@@ -34,27 +37,20 @@ export const uploadResume = async (
   upload(req, res, async (err) => {
     try {
       if (err instanceof multer.MulterError) {
-        throw new CustomError('File upload error', 400, [
-          { message: err.message }
-        ]);
+        throw new NotFoundError('File upload error');
       } else if (err) {
-        throw new CustomError('File upload error', 400, [
-          { message: err.message }
-        ]);
+        throw new NotFoundError('File upload error');
       }
 
       const file = req.file;
       if (!file) {
-        throw new CustomError('File upload error', 400, [
-          { message: 'No file uploaded' }
-        ]);
+        throw new NotFoundError('File upload error');
+
       }
 
       const studentId = req.user?.id;
       if (!studentId) {
-        throw new CustomError('Unauthorized', 401, [
-          { message: 'User not authenticated' }
-        ]);
+        throw new AuthError('Unauthorized');
       }
 
       try {
@@ -73,9 +69,7 @@ export const uploadResume = async (
 
         if (!s3Response.ok) {
           const errorText = await s3Response.text();
-          throw new CustomError('S3 upload failed', 500, [
-            { message: `Failed to upload file to S3: ${errorText}` }
-          ]);
+          throw new NotFoundError('S3 upload failed');
         }
 
         // Get the public URL
@@ -92,9 +86,7 @@ export const uploadResume = async (
       } catch (uploadError) {
         // More specific error handling for S3 operations
         console.error('S3 operation failed:', uploadError);
-        throw new CustomError('File upload error', 500, [
-          { message: 'Failed to process file upload to S3' }
-        ]);
+        throw new BadRequestError('File upload error');
       }
     } catch (error) {
       next(error);
@@ -112,9 +104,7 @@ const updateFirestoreResumeUrl = async (studentId: string, url: string) => {
       }
     });
   } catch (error) {
-    throw new CustomError('Database error', 500, [
-      { message: 'Failed to update resume URL in database' }
-    ]);
+    throw new BadRequestError('Database error');
   }
 };
 
@@ -146,7 +136,8 @@ export const updateResume = async (
       message: 'Resume updated successfully'
     });
   } catch (error) {
-    next(error);
+    throw new NotFoundError('File upload error');
+
   }
 };
 
@@ -181,6 +172,7 @@ export const getResume = async (
       data: { resumeUrl }
     });
   } catch (error) {
-    next(error);
+    throw new NotFoundError('Could get file');
+
   }
 };

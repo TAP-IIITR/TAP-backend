@@ -2,17 +2,14 @@ import { IResumeRepository } from '../interfaces/IResumeRepository';
 import { CustomError } from '../../errors/Custom-Error';
 import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { BadRequestError } from '../../errors/Bad-Request-Error';
 
 export class ResumeService {
   constructor(private resumeRepository: IResumeRepository) {}
 
   async getUploadUrl(studentId: string, fileType: string): Promise<string> {
     if (fileType !== 'application/pdf') {
-      throw new CustomError(
-        'Invalid file type',
-        400,
-        [{ message: 'Only PDF files are allowed' }]
-      );
+      throw new BadRequestError("Invalid file type. Only PDF files are allowed");
     }
 
     return await this.resumeRepository.generateUploadUrl(studentId, fileType);
