@@ -16,27 +16,38 @@ import {
   setDoc, 
   getDoc, 
   updateDoc,
-  collection 
+  collection, 
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore';
 
 export class FirebaseAuthRepository implements IAuthRepository {
   private readonly studentsCollection = 'students';
 
+ 
   async findByEmail(email: string): Promise<IStudent | null> {
     try {
       const studentsRef = collection(db, this.studentsCollection);
-      const studentSnapshot = await getDoc(doc(studentsRef, email));
+      const q = query(studentsRef, where('regEmail', '==', email));
+      const querySnapshot = await getDocs(q);
       
-      if (!studentSnapshot.exists()) {
+      if (querySnapshot.empty) {
         return null;
       }
 
-      return studentSnapshot.data() as IStudent;
+      const studentDoc = querySnapshot.docs[0];
+      return { 
+        ...studentDoc.data() as IStudent,
+        id: studentDoc.id 
+      };
     } catch (error) {
       console.error('Error finding student:', error);
       throw error;
     }
   }
+
+
 
   async create(student: IStudent): Promise<IStudent> {
     try {
@@ -53,11 +64,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Remove password before storing in Firestore
       const { password, ...studentData } = student;
       
-      // Store additional user data in Firestore
-      await setDoc(doc(db, this.studentsCollection, student.regEmail), {
+      // Store additional user data in Firestore using UID as document ID
+      await setDoc(doc(db, this.studentsCollection, userCredential.user.uid), {
         ...studentData,
         id: userCredential.user.uid,
-        emailVerified: false,  // Add email verification status
+        emailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -71,10 +82,13 @@ export class FirebaseAuthRepository implements IAuthRepository {
       throw error;
     }
   }
-  async updateEmailVerificationStatus(email: string): Promise<void> {
+
+  async updateEmailVerificationStatus(userId: string): Promise<void> {
     try {
-      await updateDoc(doc(db, this.studentsCollection, email), {
-        emailVerified: true
+      const studentRef = doc(db, this.studentsCollection, userId);
+      await updateDoc(studentRef, {
+        emailVerified: true,
+        updatedAt: new Date()
       });
     } catch (error) {
       console.error('Error updating email verification status:', error);
@@ -83,7 +97,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
   }
 
 
-  async updatePassword(id: string, newPassword: string): Promise<void> {
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -92,13 +106,11 @@ export class FirebaseAuthRepository implements IAuthRepository {
       
       await updatePassword(user, newPassword);
       
-      // Update the timestamp in Firestore
-      const studentDoc = await this.findByEmail(user.email!);
-      if (studentDoc) {
-        await updateDoc(doc(db, this.studentsCollection, user.email!), {
-          updatedAt: new Date()
-        });
-      }
+      // Update the timestamp in Firestore using userId
+      const studentRef = doc(db, this.studentsCollection, userId);
+      await updateDoc(studentRef, {
+        updatedAt: new Date()
+      });
     } catch (error) {
       console.error('Error updating password:', error);
       throw error;

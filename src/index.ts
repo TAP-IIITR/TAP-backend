@@ -12,7 +12,10 @@ app.use(cookieParser());
 import { authRouter } from "./students/routes/auth.routes";
 import { dashboardRouter } from "./students/routes/dashboard.routes";
 import { jobRouter } from "./students/routes/job.routes";
+import { resumeRouter } from './students/routes/resume.routes';
 
+
+app.use('/api/student/resume', resumeRouter);
 app.use("/api/auth/student", authRouter);
 app.use("/api/dashboard/student", dashboardRouter);
 app.use("/api/jobs/student", jobRouter);

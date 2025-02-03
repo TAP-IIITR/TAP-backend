@@ -59,6 +59,7 @@ export const login: RequestHandler = async (req, res, next) => {
       data: { id }
     });
   } catch (error) {
+    console.log("error is ", error);
     next(error);
   }
 };
