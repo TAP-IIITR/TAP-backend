@@ -41,8 +41,7 @@ export class S3ResumeRepository implements IResumeRepository {
         Bucket: this.bucketName,
         Key: key,
         ContentType: fileType,
-        // Remove ContentLength as it should be set by the client
-      });
+        ACL: 'public-read'      });
 
       // Generate signed URL with specific options
       const signedUrl = await getSignedUrl(this.s3Client, putObjectCommand, {
