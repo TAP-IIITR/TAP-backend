@@ -18,6 +18,7 @@ export const register: RequestHandler = async (req, res, next) => {
     }
 
     const { first_name, last_name, reg_email, mobile, linkedin, password } = req.body;
+    const role: string = "student"
     
     if (!first_name || !last_name || !reg_email || !password) {
       throw new BadRequestError('Missing required fields');
@@ -36,10 +37,11 @@ export const register: RequestHandler = async (req, res, next) => {
       firstName: first_name,
       lastName: last_name,
       regEmail: reg_email,
+      role,
       rollNumber,
       mobile,
       linkedin,
-      password
+      password,
     };
 
     const { id, token } = await authService.register(student);

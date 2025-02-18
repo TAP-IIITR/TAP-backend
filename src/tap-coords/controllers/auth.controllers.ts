@@ -1,57 +1,91 @@
-import { Request, RequestHandler, Response } from "express";
-import { AuthenticatedRequest } from "../../types/express";
+import { RequestHandler } from 'express';
+import { AuthenticatedRequest } from '../../types/express';
+import { TapAuthService } from '../services/Tapauth.service';
+import { TapAuthRepository } from '../repositories/TapAuth.repository';
+import { BadRequestError } from '../../errors/Bad-Request-Error';
+import { SERVER_CONFIG } from '../../config/serverConfig';
 
-const login: RequestHandler = (req: Request, res: Response) => {
-    /* 
-        Check auth credentials
-        Details in req.body
-        Generate a JWT token and send it back to the client
-        { id: "12432543", role: "tap" }
+const tapAuthService = new TapAuthService(new TapAuthRepository());
 
-        Errors : 
-            1. Request Validation (handled by middleware)
-            2. Invalid Credentials(404)
-            3. Internal Server Error(500)
-    */
-}
+export const login: RequestHandler = async (req, res, next) => {
+  try {
+    const { reg_email, password } = req.body;
+    if (!reg_email || !password) {
+      throw new BadRequestError('Email and password are required');
+    }
 
-const logout: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Destroy the session
-        Send a response back to the client
+    const { id, token } = await tapAuthService.login(reg_email, password);
 
-        Errors:
-            1. Auth Error (Handled by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            3. Internal Server Error(500)
-    */
-}
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: SERVER_CONFIG.NODE_ENV === 'production',
+      maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
+    });
 
-const resetPassword: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Send an email to the user with a reset password link
+    res.status(200).json({ 
+      success: true, 
+      message: 'Login successful', 
+      data: { id } 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Errors: 
-            1. Auth Error(hanlded by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            2. Internal Server Error(500)
-    */
+export const logout: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const userId = req.user?.id;
+    const role = req.user?.role;
 
-}
+    if (!userId || !role) {
+      throw new BadRequestError('User authentication required');
+    }
 
-const confirmResetPassword: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Check the OTP and reset the password
-        Details in req.body
+    await tapAuthService.logout(userId, role);
+    res.clearCookie('token');
+    res.status(200).json({ 
+      success: true, 
+      message: 'Logout successful' 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Errors: 
-            1. Auth Error(hanlded by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            3. Request Validation(Handled by middleware)
-            4. Invalid OTP(404)
-            5. Internal Server Error(500)
-    */
+export const resetPassword: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { reg_email } = req.body;
+    const role = req.user?.role;
 
-}
+    if (!reg_email || !role) {
+      throw new BadRequestError('Email and authentication required');
+    }
 
-export { login, logout, resetPassword, confirmResetPassword };
+    await tapAuthService.resetPassword(reg_email, role);
+    res.status(200).json({ 
+      success: true, 
+      message: 'Password reset email sent successfully' 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const confirmResetPassword: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { code, new_password } = req.body;
+    const role = req.user?.role;
+
+    if (!code || !new_password || !role) {
+      throw new BadRequestError('Code, new password, and authentication required');
+    }
+
+    await tapAuthService.confirmResetPassword(code, new_password, role);
+    res.status(200).json({ 
+      success: true, 
+      message: 'Password reset successful' 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
