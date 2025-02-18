@@ -4,6 +4,7 @@ export interface IStudent {
   lastName: string;
   regEmail: string;
   mobile: string;
+  rollNumber: string;
   linkedin: string;
   resume?: {
     url: string;

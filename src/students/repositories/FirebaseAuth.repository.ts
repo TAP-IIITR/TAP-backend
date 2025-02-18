@@ -21,11 +21,27 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
+import { validateIIITREmail,extractRollNumber } from '../../utils/validator';
 
 export class FirebaseAuthRepository implements IAuthRepository {
   private readonly studentsCollection = 'students';
 
- 
+  async findByRollNumber(rollNumber: string): Promise<IStudent | null> {
+    try {
+      const studentDoc = await getDoc(doc(db, this.studentsCollection, rollNumber));
+      if (!studentDoc.exists()) {
+        return null;
+      }
+      return {
+        ...studentDoc.data() as IStudent,
+        id: studentDoc.id
+      };
+    } catch (error) {
+      console.error('Error finding student by roll number:', error);
+      throw error;
+    }
+  }
+
   async findByEmail(email: string): Promise<IStudent | null> {
     try {
       const studentsRef = collection(db, this.studentsCollection);
@@ -37,9 +53,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
       }
 
       const studentDoc = querySnapshot.docs[0];
-      return { 
+      return {
         ...studentDoc.data() as IStudent,
-        id: studentDoc.id 
+        id: studentDoc.id
       };
     } catch (error) {
       console.error('Error finding student:', error);
@@ -47,10 +63,23 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
-
-
   async create(student: IStudent): Promise<IStudent> {
     try {
+      if (!validateIIITREmail(student.regEmail)) {
+        throw new Error('Invalid email format');
+      }
+
+      const rollNumber = extractRollNumber(student.regEmail);
+      if (!rollNumber) {
+        throw new Error('Could not extract roll number from email');
+      }
+
+      // Check if roll number already exists
+      const existingStudent = await this.findByRollNumber(rollNumber);
+      if (existingStudent) {
+        throw new Error('Student with this roll number already exists');
+      }
+
       // Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -58,16 +87,15 @@ export class FirebaseAuthRepository implements IAuthRepository {
         student.password!
       );
 
-      // Send verification email
       await sendEmailVerification(userCredential.user);
 
-      // Remove password before storing in Firestore
       const { password, ...studentData } = student;
       
-      // Store additional user data in Firestore using UID as document ID
-      await setDoc(doc(db, this.studentsCollection, userCredential.user.uid), {
+      // Store in Firestore using roll number as document ID
+      await setDoc(doc(db, this.studentsCollection, rollNumber), {
         ...studentData,
-        id: userCredential.user.uid,
+        id: rollNumber,
+        uid: userCredential.user.uid,
         emailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -75,7 +103,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       return {
         ...studentData,
-        id: userCredential.user.uid
+        id: rollNumber
       };
     } catch (error) {
       console.error('Error creating student:', error);
@@ -83,9 +111,10 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
-  async updateEmailVerificationStatus(userId: string): Promise<void> {
+
+  async updateEmailVerificationStatus(rollNumber: string): Promise<void> {
     try {
-      const studentRef = doc(db, this.studentsCollection, userId);
+      const studentRef = doc(db, this.studentsCollection, rollNumber);
       await updateDoc(studentRef, {
         emailVerified: true,
         updatedAt: new Date()
