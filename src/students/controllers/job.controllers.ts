@@ -1,205 +1,219 @@
-import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from "../../types/express";
+import { Response, RequestHandler, NextFunction } from "express";
 import {
   collection,
   getDocs,
   query as q,
   where,
+  getDoc,
+  doc,
   updateDoc,
-  addDoc,
   arrayUnion,
-  serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
-import nodemailer from "nodemailer";
 import { v4 as uuidv4 } from "uuid";
+import { BadRequestError } from "../../errors/Bad-Request-Error";
+import { NotFoundError } from "../../errors/NotFound.error";
+import { AuthError } from "../../errors/Auth-Error";
 
-// GET /jobs?query={job_type}
-
-export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// Get all jobs with optional filtering
+export const getJobs: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const queryRaw = req.query.query ? req.query.query.toString().toLowerCase() : "all";
-    let jobsQuery;
-    if (queryRaw === "all") {
-      jobsQuery = q(collection(db, "jobs"));
-    } else if (["intern", "fte", "intern_fte"].includes(queryRaw)) {
-      jobsQuery = q(collection(db, "jobs"), where("job_type", "==", queryRaw));
-    } else {
-      res.status(400).json({ success: false, message: "Invalid job type" });
-      return;
+    if (!req.user) {
+      throw new AuthError("Unauthorized");
     }
+
+    const queryRaw = req.query.query?.toString().toLowerCase() || "all";
+
+    if (!["all", "intern", "fte", "intern_fte"].includes(queryRaw)) {
+      throw new BadRequestError("Invalid job type");
+    }
+
+    let jobsQuery =
+      queryRaw === "all"
+        ? q(collection(db, "jobs"))
+        : q(collection(db, "jobs"), where("job_type", "==", queryRaw));
+
     const querySnapshot = await getDocs(jobsQuery);
-    const jobsData: any[] = [];
-    querySnapshot.forEach((docSnapshot) => {
-      jobsData.push({ id: docSnapshot.id, ...docSnapshot.data() });
-    });
+    const jobsData = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      title: doc.data().title,
+      jd: doc.data().JD,
+      location: doc.data().location,
+      package: doc.data().package,
+      eligibility: doc.data().eligibility,
+      skills: doc.data().skills,
+      deadline: doc.data().deadline.toDate(),
+      recruiter: {
+        company_name: doc.data().recruiter.company_name,
+      },
+      job_type: doc.data().job_type,
+    }));
+
     res.status(200).json({
-      statusCode: 200,
-      message: "Jobs fetched",
-      jobs: jobsData
+      status: 200,
+      message: "Jobs fetched successfully",
+      data: {
+        jobs: jobsData,
+        total: jobsData.length,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /jobs/:id
-
-export const getJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// Get single job details
+export const getJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const jobId = req.params.id;
-    const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
-    const querySnapshot = await getDocs(jobsQuery);
-    if (querySnapshot.empty) {
-    res.status(404).json({ success: false, message: "Job not found" });
-    return;
+    if (!req.user) {
+      throw new AuthError("Unauthorized");
     }
-    const jobDoc = querySnapshot.docs[0];
+
+    const jobId = req.params.id;
+    const jobDoc = await getDoc(doc(db, "jobs", jobId));
 
     if (!jobDoc.exists()) {
-      res.status(404).json({ success: false, message: "Job not found" });
-      return;
+      throw new NotFoundError("Job not found");
     }
-    
-    const jobData = jobDoc.data() as any;
 
-    let applications = [];
-    if (jobData.applications && Array.isArray(jobData.applications)) {
-      applications = jobData.applications.map((app: any) => ({ form: app.form }));
-    }
-    
+    const jobData = jobDoc.data();
+
+    // Check if student has already applied
+    const hasApplied = jobData.applications?.some(
+      (app: any) => app.student === req.user?.id
+    );
+
     res.status(200).json({
-      statusCode: 200,
-      message: "Job fetched",
-      job: { id: jobDoc.id, ...jobData, applications }
+      status: 200,
+      message: "Job fetched successfully",
+      data: {
+        job: {
+          id: jobDoc.id,
+          title: jobData.title,
+          jd: jobData.JD,
+          location: jobData.location,
+          package: jobData.package,
+          eligibility: jobData.eligibility,
+          skills: jobData.skills,
+          deadline: jobData.deadline.toDate(),
+          form: jobData.form,
+          recruiter: {
+            company_name: jobData.recruiter.company_name,
+          },
+          hasApplied,
+        },
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// POST /jobs/:id/apply
-
-export const applyJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// Apply for a job
+export const applyJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
+    if (!req.user) {
+      throw new AuthError("Unauthorized");
+    }
+
     const jobId = req.params.id;
-    const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
-    const querySnapshot = await getDocs(jobsQuery);
-    if (querySnapshot.empty) {
-      res.status(404).json({ success: false, message: "Job not found or has expired" });
-      return;
-    }
-    const jobDoc = querySnapshot.docs[0];
-    const jobDocRef = jobDoc.ref;
+    const jobDoc = await getDoc(doc(db, "jobs", jobId));
 
-    // todo - ADD ADMIN MIDDLEWARE
-    // if (!admin) {
-    //   res.status(401).json({ success: false, message: "Unauthorized" });
-    //   return;
-    // }
-
-    const student = (req as any).user;
-    
-    let jobApplicationForm = req.body.form;
-    if (!jobApplicationForm) {
-      res.status(400).json({ success: false, message: "Application form is required" });
-      return;
+    if (!jobDoc.exists()) {
+      throw new NotFoundError("Job not found");
     }
-    if (typeof jobApplicationForm === "string") {
+
+    const jobData = jobDoc.data();
+
+    // Check if deadline has passed
+    if (jobData.deadline.toDate() < new Date()) {
+      throw new BadRequestError("Application deadline has passed");
+    }
+
+    // Check if student has already applied
+    if (
+      jobData.applications?.some((app: any) => app.student === req.user!.id)
+    ) {
+      throw new BadRequestError("Already applied to this job");
+    }
+
+    // Validate form data
+    let formData = req.body.form;
+    if (!formData) {
+      throw new BadRequestError("Application form is required");
+    }
+
+    if (typeof formData === "string") {
       try {
-        jobApplicationForm = JSON.parse(jobApplicationForm);
+        formData = JSON.parse(formData);
       } catch (err) {
-        res.status(400).json({ success: false, message: "Application form must be valid JSON" });
-        return;
+        throw new BadRequestError("Invalid form data format");
       }
+    }
+
+    // Check eligibility criteria
+    const student = await getDoc(doc(db, "students", req.user!.id));
+    const studentData = student.data();
+
+    if (!studentData) {
+      throw new NotFoundError("Student data not found");
+    }
+
+    if (studentData.cgpa < jobData.eligibility.cgpa) {
+      throw new BadRequestError("CGPA criteria not met");
+    }
+
+    if (!jobData.eligibility.branches.includes(studentData.branch)) {
+      throw new BadRequestError("Branch not eligible");
+    }
+
+    if (jobData.eligibility.batch !== studentData.batch_year) {
+      throw new BadRequestError("Batch year not eligible");
     }
 
     const jobApplication = {
       uuid: uuidv4(),
       job: jobId,
-      student: student.id,
-      form: jobApplicationForm,
-      createdAt: new Date(), 
-      status: "Pending"
+      student: req.user.id,
+      form: formData,
+      createdAt: new Date(),
+      status: "PENDING",
     };
 
+    // Update job document with new application
+    await updateDoc(doc(db, "jobs", jobId), {
+      applications: arrayUnion(jobApplication),
+    });
 
-    try {
-        // Try updating the job document by appending the new application
-        await updateDoc(jobDocRef, {
-          applications: arrayUnion(jobApplication)
-        });
-        console.log("Application successfully added.");
-      } catch (error) {
-        // Log the error to identify if it's a permission issue or another error
-        console.error("Error updating document:", error);
-        throw error; // rethrow so that the error middleware can handle it if needed
-      }
-
-    // const transporter = nodemailer.createTransport({
-    //   host: process.env.EMAIL_HOST,
-    //   port: Number(process.env.EMAIL_PORT) || 587,
-    //   secure: false,
-    //   auth: {
-    //     user: process.env.EMAIL_USER,
-    //     pass: process.env.EMAIL_PASS
-    //   }
-    // });
-
-    // const mailOptions = {
-    //   from: process.env.EMAIL_FROM || '"No Reply" <no-reply@example.com>',
-    //   to: student.email,
-    //   subject: "Job Application Confirmation",
-    //   text: `Hello, your application for the job has been received.`,
-    //   html: `<p>Hello,</p><p>Your application for the job has been received.</p>`
-    // };
-
-    // await transporter.sendMail(mailOptions);
+    // Update student document with applied job
+    await updateDoc(doc(db, "students", req.user.id), {
+      applied_to: arrayUnion(jobId),
+    });
 
     res.status(200).json({
-      statusCode: 200,
-      message: "Application submitted and confirmation email sent",
-      jobApplication
-    });
-    
-  } catch (error) {
-    next(error);
-  }
-};
-
-// POST /jobs/admin
-
-export const addJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-
-    const { title, jd, location, salaryPackage, eligibility, skills, deadline, form, recruiter, job_type } = req.body;
-
-    if (!title || !jd || !location || !salaryPackage || !eligibility || !skills || !deadline || !recruiter || !job_type) {
-      res.status(400).json({ success: false, message: "Missing required job fields" });
-      return;
-    }
-    
-    const newJob = {
-      title,                           
-      jd,                             
-      location,                      
-      package: salaryPackage,         
-      eligibility,                    
-      skills,                          
-      deadline,                       
-      form,                           
-      recruiter,                      
-      job_type,                       
-      applications: [],                
-      createdAt: serverTimestamp()    
-    };
-
-    const jobRef = await addDoc(collection(db, "jobs"), newJob);
-    await updateDoc(jobRef, { job_id: jobRef.id });
-
-    res.status(201).json({
-      success: true,
-      message: "Job created successfully",
-      job_id: jobRef.id
+      status: 200,
+      message: "Application submitted successfully",
+      data: {
+        application: {
+          id: jobApplication.uuid,
+          jobId,
+          status: jobApplication.status,
+          appliedAt: jobApplication.createdAt,
+        },
+      },
     });
   } catch (error) {
     next(error);

@@ -6,7 +6,7 @@ import { sendEmailVerification, signInWithEmailAndPassword, signOut } from 'fire
 import { auth } from '../../config/firebase';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
 import { AuthError } from '../../errors/Auth-Error';
-import { NotFoundError } from '../../errors/Not-Found-Error';
+import { NotFoundError } from '../../errors/NotFound.error';
 
 export class AuthService implements IAuthService {
   constructor(private authRepository: IAuthRepository) {}

@@ -6,9 +6,10 @@ import { CustomError } from '../../errors/Custom-Error';
 import multer from 'multer';
 import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { NotFoundError } from '../../errors/Not-Found-Error';
+
 import { AuthError } from '../../errors/Auth-Error';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
+import { NotFoundError } from '../../errors/NotFound.error';
 
 // Configure multer for PDF files
 const storage = multer.memoryStorage();

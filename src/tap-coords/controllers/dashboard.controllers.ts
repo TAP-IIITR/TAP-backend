@@ -1,34 +1,130 @@
 import { AuthenticatedRequest } from "../../types/express";
-import { RequestHandler, Response } from "express";
+import { RequestHandler, Response, NextFunction } from "express";
+import { read as readXlsx, utils } from "xlsx";
+import {
+  collection,
+  doc,
+  updateDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
+import { db } from "../../config/firebase";
+import { ForbiddenError } from "../../errors/Forbidden.error";
+import { BadRequestError } from "../../errors/Bad-Request-Error";
 
-export const getDashboard: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /*
-        Fetch ID from req.user and use it to
-        Get the dashboard data for the TAP Coordinator
 
-        Errors: 
-            1. Auth Error(handled by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            3. Internal Server Error(500)
-    */
+interface MulterRequest extends AuthenticatedRequest {
+  file?: Express.Multer.File;
+}
+
+export const getDashboard: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
+
+    
+    const studentsSnapshot = await getDocs(collection(db, "students"));
+    const students = studentsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: `${data.firstName} ${data.lastName}`,
+        regNo: doc.id,
+        branch: data.branch,
+        batch: data.batch_year,
+        cgpa: data.cgpa,
+      };
+    });
+
+    
+    const jobsSnapshot = await getDocs(
+      query(collection(db, "jobs"), where("deadline", ">", new Date()))
+    );
+    const jobs = jobsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      title: doc.data().title,
+      companyName: doc.data().recruiter.company_name,
+      deadline: doc.data().deadline,
+      package: doc.data().package,
+    }));
+
+    res.status(200).json({
+      status: 200,
+      message: "Dashboard data fetched successfully",
+      data: {
+        students: {
+          total: students.length,
+          list: students,
+        },
+        jobs: {
+          total: jobs.length,
+          list: jobs,
+        },
+      },
+    });
+  } catch (error) {
+    next(error); 
+  }
 };
 
-export const updateCGPA: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /*
-        Input: Excel file with CGPA data
-        Fetch Reg_No(also Primary Key for students) and CGPA from the excel file
-        Update the CGPA of the students in the database
+export const updateCGPA: RequestHandler = async (
+  req: MulterRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
 
-        // can use express-validator with multer to verify the excel file but that is inefficient in our case,
-        // so we will do validation checks in the controller
+    if (!req.file) {
+      throw new BadRequestError("No file uploaded");
+    }
 
-        Errors:
-            1. Auth Error(handled by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            3. Check if the file is an excel file(400 Bad Request)
-            4. Check if the file is empty(400 Bad Request)
-            5. Check if the file has the required columns(400 Bad Request)
-            6. Check if the Reg_No exists in the database(404 Not Found)
-            7. Internal Server Error(500)
-    */
-}
+    
+    if (!req.file.originalname.match(/\.(xlsx|xls)$/)) {
+      throw new BadRequestError("Please upload an Excel file");
+    }
+
+    
+    const workbook = readXlsx(req.file.buffer);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = utils.sheet_to_json(worksheet) as Array<{
+      Reg_No: string;
+      CGPA: string;
+    }>;
+
+    
+    if (
+      !data.length ||
+      !data[0].hasOwnProperty("Reg_No") ||
+      !data[0].hasOwnProperty("CGPA")
+    ) {
+      throw new BadRequestError("Invalid file format");
+    }
+
+    
+    const studentsRef = collection(db, "students");
+    const updates = data.map(async (row: any) => {
+      const studentDoc = doc(studentsRef, row.Reg_No);
+      return updateDoc(studentDoc, {
+        cgpa: parseFloat(row.CGPA),
+      });
+    });
+
+    await Promise.all(updates);
+
+    res.status(200).json({
+      status: 200,
+      message: "CGPA updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

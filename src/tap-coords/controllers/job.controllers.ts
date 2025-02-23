@@ -1,120 +1,245 @@
 import { AuthenticatedRequest } from "../../types/express";
-import { Response, RequestHandler } from "express"
+import { Response, RequestHandler, NextFunction } from "express";
+import { db } from "../../config/firebase";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  getDoc,
+} from "firebase/firestore";
 
-const createJob: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Create a new job listing
-        
-        Required fields in req.body:
-        - title: string
-        - JD: string
-        - location: string
-        - package: string
-        - eligibility: string
-        - skills: string[]
-        - deadline: Date
-        - form: JSON
-        - recruiter: UUID
+import { ForbiddenError } from "../../errors/Forbidden.error";
+import { NotFoundError } from "../../errors/NotFound.error";
+import { BadRequestError } from "../../errors/Bad-Request-Error";
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Out of Bound access(user not a TAP coordinator) (403 Forbidden)
-        3. Request Validation (400) (handled by middleware)
-        4. Recruiter not found (404)
-        5. Internal Server Error (500)
-    */
-}
+export const createJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
 
-const getAllJobs: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Fetch all jobs
+    if (
+      !req.body.title ||
+      !req.body.JD ||
+      !req.body.location ||
+      !req.body.package ||
+      !req.body.eligibility ||
+      !req.body.skills ||
+      !req.body.deadline ||
+      !req.body.recruiter
+    ) {
+      throw new BadRequestError("Missing required fields");
+    }
 
-        Returns:
-        - jobs array with basic details(sort by createdAt(Newest first))
+    if (
+      !req.body.eligibility.cgpa ||
+      !req.body.eligibility.branches ||
+      !req.body.eligibility.batch
+    ) {
+      throw new BadRequestError("Missing eligibility criteria");
+    }
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Check if the user is a TAP coordinator (403)
-        3. Internal Server Error (500)
-    */
-}
+    const jobData = {
+      title: req.body.title,
+      JD: req.body.JD,
+      location: req.body.location,
+      package: req.body.package,
+      eligibility: {
+        cgpa: req.body.eligibility.cgpa,
+        branches: req.body.eligibility.branches,
+        batch: req.body.eligibility.batch,
+      },
+      skills: req.body.skills,
+      deadline: new Date(req.body.deadline),
+      form: req.body.form,
+      recruiter: {
+        company_name: req.body.recruiter.company_name,
+        hr_name: req.body.recruiter.hr_name,
+        hr_contact: req.body.recruiter.hr_contact,
+        hr_email: req.body.recruiter.hr_email,
+      },
+      applications: [],
+      createdAt: new Date(),
+    };
 
-const getJobById: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Fetch specific job details by ID
-        
-        Parameters:
-        - id: UUID (from req.params)
+    const jobRef = await addDoc(collection(db, "jobs"), jobData);
 
-        Returns:
-        - detailed job information
+    res.status(201).json({
+      status: 201,
+      message: "Job created successfully",
+      data: {
+        jobId: jobRef.id,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Request Validation (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Invalid ID format (400)
-        5. Job not found (404)
-        6. Internal Server Error (500)
-    */
-}
+export const getAllJobs: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
 
-const updateJob: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Update existing job details
-        
-        Parameters:
-        - id: UUID (from req.params)
+    const jobsSnapshot = await getDocs(collection(db, "jobs"));
+    const jobs = jobsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-        Optional fields in req.body:
-        - title: string
-        - JD: string
-        - location: string
-        - package: string
-        - eligibility: string
-        - skills: string[]
-        - deadline: Date
+    // Sort by createdAt (newest first)
+    jobs.sort((a: any, b: any) => b.createdAt - a.createdAt);
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Request Validation (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Job not found (404)
-        5. Internal Server Error (500)
-    */
-}
+    res.status(200).json({
+      status: 200,
+      message: "Jobs fetched successfully",
+      data: {
+        jobs,
+        totalJobs: jobs.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-const deleteJob: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Delete a job listing
-        
-        Parameters:
-        - id: UUID (from req.params)
+export const getJobById: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Invalid ID format (400) (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Job not found (404)
-        5. Internal Server Error (500)
-    */
-}
+    const { id } = req.params;
+    const jobDoc = await getDoc(doc(db, "jobs", id));
 
-const getAllApplications: RequestHandler = (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Input - job: UUID(req.query)
+    if (!jobDoc.exists()) {
+      throw new NotFoundError("Job not found");
+    }
 
-        Get Job from DB using job ID
-        Iterate through applications array and Application details
-        
-        Returns:
-        - Array of applications
+    res.status(200).json({
+      status: 200,
+      message: "Job fetched successfully",
+      data: {
+        job: {
+          id: jobDoc.id,
+          ...jobDoc.data(),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Out of bound access (User not a coordinator) (403 Forbidden)
-        3. Internal Server Error (500)
-    */
-}
+export const updateJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
 
-export { createJob, getAllJobs, getJobById, updateJob, deleteJob, getAllApplications };
+    const { id } = req.params;
+    const jobRef = doc(db, "jobs", id);
+    const jobDoc = await getDoc(jobRef);
+
+    if (!jobDoc.exists()) {
+      throw new NotFoundError("Job not found");
+    }
+
+    await updateDoc(jobRef, req.body);
+
+    res.status(200).json({
+      status: 200,
+      message: "Job updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
+
+    const { id } = req.params;
+    const jobRef = doc(db, "jobs", id);
+    const jobDoc = await getDoc(jobRef);
+
+    if (!jobDoc.exists()) {
+      throw new NotFoundError("Job not found");
+    }
+
+    await deleteDoc(jobRef);
+
+    res.status(200).json({
+      status: 200,
+      message: "Job deleted successfully",
+    });
+  } catch (error) {
+    next(error); 
+  }
+};
+
+export const getAllApplications: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      throw new ForbiddenError("Not authorized");
+    }
+
+    const jobId = req.query.job as string;
+    const applicationsRef = collection(db, "applications");
+    const applicationsQuery = query(
+      applicationsRef,
+      where("jobId", "==", jobId)
+    );
+
+    const applicationsSnapshot = await getDocs(applicationsQuery);
+    const applications = applicationsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      appliedAt: doc.data().appliedAt?.toDate(),
+    }));
+
+    res.status(200).json({
+      status: 200,
+      message: "Applications fetched successfully",
+      data: {
+        applications,
+        total: applications.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
