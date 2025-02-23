@@ -170,28 +170,31 @@ export const applyJob = async (req: Request, res: Response, next: NextFunction):
 
 export const addJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-
-    const { title, jd, location, salaryPackage, eligibility, skills, deadline, form, recruiter, job_type } = req.body;
+    const { title, jd, location, salaryPackage, eligibility, skills, deadline, recruiter, job_type, form } = req.body;
 
     if (!title || !jd || !location || !salaryPackage || !eligibility || !skills || !deadline || !recruiter || !job_type) {
       res.status(400).json({ success: false, message: "Missing required job fields" });
       return;
     }
-    
-    const newJob = {
-      title,                           
-      jd,                             
-      location,                      
-      package: salaryPackage,         
-      eligibility,                    
-      skills,                          
-      deadline,                       
-      form,                           
-      recruiter,                      
-      job_type,                       
-      applications: [],                
-      createdAt: serverTimestamp()    
+
+    const newJob: any = {
+      title,
+      jd,
+      location,
+      package: salaryPackage,
+      eligibility,
+      skills,
+      deadline,
+      recruiter,
+      job_type,
+      applications: [],
+      createdAt: serverTimestamp()
     };
+
+    // ✅ Ensure form is only added if it exists
+    if (form !== undefined) {
+      newJob.form = form;
+    }
 
     const jobRef = await addDoc(collection(db, "jobs"), newJob);
     await updateDoc(jobRef, { job_id: jobRef.id });

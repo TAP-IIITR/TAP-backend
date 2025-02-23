@@ -57,11 +57,12 @@ router.post(
   validateRequest,
   resetPassword
 );
+
 router.post(
   "/confirm-reset-password",
   checkAuth,
   [
-    body("otp").isLength({ min: 6 }).withMessage("OTP must be 6 characters"),
+    body("code").isLength({ min: 6 }).withMessage("OTP must be 6 characters"),
     body("new_password")
       .isLength({ min: 8 })
       .withMessage("New password must be at least 8 characters"),
