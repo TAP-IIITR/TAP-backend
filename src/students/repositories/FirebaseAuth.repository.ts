@@ -21,10 +21,11 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { validateIIITREmail,extractRollNumber } from '../../utils/validator';
+import { validateIIITREmail, extractRollNumber } from '../../utils/validator';
 
 export class FirebaseAuthRepository implements IAuthRepository {
   private readonly studentsCollection = 'students';
+  private readonly cgpaCollection = 'CGPA';
 
   async findByRollNumber(rollNumber: string): Promise<IStudent | null> {
     try {
@@ -63,6 +64,25 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 
+  async checkCGPAExists(rollNumber: string): Promise<number | null> {
+    try {
+      // Using the same document ID format as in the updateCGPA function
+      const cgpaDocId = `2023UG${rollNumber}`;
+      const cgpaDocRef = doc(db, this.cgpaCollection, cgpaDocId);
+      const cgpaDoc = await getDoc(cgpaDocRef);
+      
+      if (cgpaDoc.exists()) {
+        const cgpaData = cgpaDoc.data();
+        return cgpaData.cgpa;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error checking CGPA existence:', error);
+      return null; // Return null instead of throwing to not interrupt the main flow
+    }
+  }
+
   async create(student: IStudent): Promise<IStudent> {
     try {
       if (!validateIIITREmail(student.regEmail)) {
@@ -91,26 +111,36 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
       const { password, ...studentData } = student;
       
+      // Check if CGPA exists for this roll number
+      const cgpa = await this.checkCGPAExists(rollNumber);
+      
       // Store in Firestore using roll number as document ID
-      await setDoc(doc(db, this.studentsCollection, rollNumber), {
+      const studentToSave = {
         ...studentData,
         id: rollNumber,
         uid: userCredential.user.uid,
         emailVerified: false,
         createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
+      
+      // Add CGPA if it exists
+      if (cgpa !== null) {
+        studentToSave.cgpa = cgpa;
+      }
+      
+      await setDoc(doc(db, this.studentsCollection, rollNumber), studentToSave);
 
       return {
         ...studentData,
-        id: rollNumber
+        id: rollNumber,
+        ...(cgpa !== null && { cgpa })
       };
     } catch (error) {
       console.error('Error creating student:', error);
       throw error;
     }
   }
-
 
   async updateEmailVerificationStatus(rollNumber: string): Promise<void> {
     try {
@@ -124,7 +154,6 @@ export class FirebaseAuthRepository implements IAuthRepository {
       throw error;
     }
   }
-
 
   async updatePassword(userId: string, newPassword: string): Promise<void> {
     try {
@@ -176,4 +205,3 @@ export class FirebaseAuthRepository implements IAuthRepository {
     }
   }
 }
-
