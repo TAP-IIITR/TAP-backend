@@ -30,18 +30,17 @@ export class S3ResumeRepository implements IResumeRepository {
     this.bucketName = process.env.AWS_S3_BUCKET;
   }
 
-  async generateUploadUrl(studentId: string, fileType: string): Promise<string> {
+  async generateUploadUrl(rollNumber: string, fileType: string): Promise<string> {
     try {
-      // Create a unique key for the file
-      const timestamp = Date.now();
-      const key = `resumes/${studentId}/latest.pdf`;
+      // Create a unique key for the file using rollNumber
+      const key = `resumes/${rollNumber}/latest.pdf`;
 
       // Create the PUT command with specific parameters
       const putObjectCommand = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
         ContentType: fileType //ACL is set to PUBLIC by default
-          });
+      });
 
       // Generate signed URL with specific options
       const signedUrl = await getSignedUrl(this.s3Client, putObjectCommand, {
@@ -56,27 +55,26 @@ export class S3ResumeRepository implements IResumeRepository {
     }
   }
 
-  async deleteResume(studentId: string): Promise<void> {
+  async deleteResume(rollNumber: string): Promise<void> {
     try {
-      // List objects to find the current resume
-      const prefix = `resumes/${studentId}/`;
+      // Define the key for the file to delete
+      const key = `resumes/${rollNumber}/latest.pdf`;
       
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
-        Key: prefix
+        Key: key
       });
 
       await this.s3Client.send(command);
     } catch (error) {
       console.error('Error deleting resume:', error);
       throw new BadRequestError('S3 error');
-
     }
   }
 
-  async getResumeUrl(studentId: string): Promise<string | null> {
+  async getResumeUrl(rollNumber: string): Promise<string | null> {
     try {
-      const key = `resumes/${studentId}/latest.pdf`; // Use a consistent key for the latest resume
+      const key = `resumes/${rollNumber}/latest.pdf`; // Use rollNumber as key
       
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
