@@ -6,6 +6,7 @@ export interface IStudent {
   mobile: string;
   rollNumber: string;
   linkedin: string;
+  cgpa: number;
   role: string 
   resume?: {
     url: string;

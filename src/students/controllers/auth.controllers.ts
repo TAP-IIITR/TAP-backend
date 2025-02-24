@@ -32,6 +32,7 @@ export const register: RequestHandler = async (req, res, next) => {
     if (!rollNumber) {
       throw new BadRequestError('Could not extract roll number from email');
     }
+    const cgpa = 0;
 
     const student = {
       firstName: first_name,
@@ -42,6 +43,7 @@ export const register: RequestHandler = async (req, res, next) => {
       mobile,
       linkedin,
       password,
+      cgpa
     };
 
     const { id, token } = await authService.register(student);
