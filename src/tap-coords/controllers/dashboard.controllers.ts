@@ -1,15 +1,22 @@
 import { Request, Response, NextFunction } from "express";
-import { collection, doc, getDoc, getDocs, query, where, updateDoc, addDoc, arrayUnion, serverTimestamp, DocumentReference } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, updateDoc, addDoc, arrayUnion, serverTimestamp, DocumentReference, setDoc } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { AuthenticatedRequest } from "../../types/express";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from "uuid";
 
-// Add this interface near the top of the file
+// Add these interfaces near the top of the file
 interface CGPARow {
   reg_no: string | number;
   cgpa: string | number;
+}
+
+interface CGPARecord {
+  roll_no: string;
+  semester: string;
+  cgpa: number;
+  timestamp: any;
 }
 
 // Dashboard Controller
@@ -20,10 +27,10 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response, nex
       res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
       return;
     }
-
+    
     // Get dashboard statistics
     const stats = await getDashboardStats();
-    
+        
     res.status(200).json({
       success: true,
       message: "Dashboard data retrieved successfully",
@@ -72,44 +79,71 @@ export const updateCGPA = async (req: AuthenticatedRequest, res: Response, next:
       res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
       return;
     }
-
+    
     // Check if file exists in request
     if (!req.files || !('cgpaFile' in req.files)) {
       throw new BadRequestError('CGPA Excel file is required');
     }
-
-    const file = (req.files as { [key: string]: any }).cgpaFile;
     
+    // Check if semester is provided
+    if (!req.body.semester) {
+      throw new BadRequestError('Semester is required');
+    }
+    
+    const semester = req.body.semester;
+    const file = (req.files as { [key: string]: any }).cgpaFile;
+        
     // Validate file type
     if (!file.name.match(/\.(xlsx|xls)$/)) {
       throw new BadRequestError('Invalid file type. Only Excel files are allowed');
     }
-
+    
     // Read Excel file
     const workbook = XLSX.read(file.data);
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json<CGPARow>(worksheet);
-
+    
     // Validate data structure
     if (!data.length || !data[0].hasOwnProperty('reg_no') || !data[0].hasOwnProperty('cgpa')) {
       throw new BadRequestError('Invalid Excel format. File must contain reg_no and cgpa columns');
     }
-
-    // Update CGPAs
-    const updates = [];
+    
+    // Update CGPAs in both collections
+    const studentUpdates = [];
+    const cgpaUpdates = [];
+    
     for (const row of data) {
-      const studentRef = doc(db, "students", row.reg_no.toString());
-      updates.push(updateDoc(studentRef, {
-        cgpa: parseFloat(row.cgpa.toString()),
+      const rollNo = row.reg_no.toString();
+      const cgpaValue = parseFloat(row.cgpa.toString());
+      
+      // Update student document
+      const studentRef = doc(db, "students", rollNo);
+      studentUpdates.push(updateDoc(studentRef, {
+        cgpa: cgpaValue,
         updatedAt: serverTimestamp()
       }));
+      
+      // Create/update document in CGPA collection
+      // Using a compound ID of rollNo_semester as the document ID
+      const cgpaDocId = `2023UG${rollNo}`;
+      const cgpaDocRef = doc(db, "CGPA", cgpaDocId);
+      
+      const cgpaRecord: CGPARecord = {
+        roll_no: rollNo,
+        semester: semester,
+        cgpa: cgpaValue,
+        timestamp: serverTimestamp()
+      };
+      
+      cgpaUpdates.push(setDoc(cgpaDocRef, cgpaRecord));
     }
-
-    await Promise.all(updates);
-
+    
+    // Execute all updates
+    await Promise.all([...studentUpdates, ...cgpaUpdates]);
+    
     res.status(200).json({
       success: true,
-      message: `Successfully updated CGPA for ${updates.length} students`
+      message: `Successfully updated CGPA for ${studentUpdates.length} students and added semester records`
     });
   } catch (error) {
     next(error);
