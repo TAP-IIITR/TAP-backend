@@ -44,13 +44,13 @@ export class AuthService implements IAuthService {
   
       // Get the user ID from Firebase Auth
       const userId = userCredential.user.uid;
-  
+      const rollNumber = student.rollNumber
       // Update email verification status using the correct user ID
-      await this.authRepository.updateEmailVerificationStatus(userId);
+      await this.authRepository.updateEmailVerificationStatus(rollNumber);
       
       // Generate JWT token with proper payload
       const token = generateJWT({ 
-        id: userId, 
+        id: rollNumber, 
         role: 'student'
       });
   

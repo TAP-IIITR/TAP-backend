@@ -80,7 +80,7 @@ export const login: RequestHandler = async (req, res, next) => {
       maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
     });
 
-    res.status(200).json({ success: true, message: 'Login successful', data: { id } });
+    res.status(200).json({ success: true, message: 'Login successful', data: { id,token } });
   } catch (error) {
     next(error);
   }

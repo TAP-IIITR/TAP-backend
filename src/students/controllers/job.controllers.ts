@@ -135,26 +135,6 @@ export const applyJob = async (req: Request, res: Response, next: NextFunction):
         throw error; // rethrow so that the error middleware can handle it if needed
       }
 
-    // const transporter = nodemailer.createTransport({
-    //   host: process.env.EMAIL_HOST,
-    //   port: Number(process.env.EMAIL_PORT) || 587,
-    //   secure: false,
-    //   auth: {
-    //     user: process.env.EMAIL_USER,
-    //     pass: process.env.EMAIL_PASS
-    //   }
-    // });
-
-    // const mailOptions = {
-    //   from: process.env.EMAIL_FROM || '"No Reply" <no-reply@example.com>',
-    //   to: student.email,
-    //   subject: "Job Application Confirmation",
-    //   text: `Hello, your application for the job has been received.`,
-    //   html: `<p>Hello,</p><p>Your application for the job has been received.</p>`
-    // };
-
-    // await transporter.sendMail(mailOptions);
-
     res.status(200).json({
       statusCode: 200,
       message: "Application submitted and confirmation email sent",
