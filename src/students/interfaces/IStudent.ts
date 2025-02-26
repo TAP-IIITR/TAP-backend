@@ -6,6 +6,8 @@ export interface IStudent {
   mobile: string;
   rollNumber: string;
   linkedin: string;
+  batch: string;
+  branch: string;
   cgpa: number;
   role: string 
   resume?: {

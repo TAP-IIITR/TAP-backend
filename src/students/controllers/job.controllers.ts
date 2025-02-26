@@ -62,6 +62,8 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
     
     const jobData = jobDoc.data() as any;
 
+
+    // remove this shit
     let applications = [];
     if (jobData.applications && Array.isArray(jobData.applications)) {
       applications = jobData.applications.map((app: any) => ({ form: app.form }));
@@ -128,7 +130,7 @@ export const applyJob = async (req: Request, res: Response, next: NextFunction):
         await updateDoc(jobDocRef, {
           applications: arrayUnion(jobApplication)
         });
-        console.log("Application successfully added.");
+        console.log("Application successfully added.");   
       } catch (error) {
         // Log the error to identify if it's a permission issue or another error
         console.error("Error updating document:", error);
