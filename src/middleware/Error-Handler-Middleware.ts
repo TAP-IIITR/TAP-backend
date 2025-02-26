@@ -12,7 +12,7 @@ export const errorHandler = (
   }
   else 
   res.status(500).json({
-    errors: [{ message: "Something went wrong" }],
+    errors: [{ message: err.message || "Something went wrong" }],
   });
   next();
 };
