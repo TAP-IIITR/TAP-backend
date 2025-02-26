@@ -7,14 +7,17 @@ import {
   updateDoc,
   addDoc,
   arrayUnion,
-  serverTimestamp
+  serverTimestamp,
+  getDoc,
+  doc,
+  increment
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
-import nodemailer from "nodemailer";
 import { v4 as uuidv4 } from "uuid";
+import { AuthenticatedRequest } from "../../types/express";
+import { BadRequestError } from "../../errors/Bad-Request-Error";
 
 // GET /jobs?query={job_type}
-
 export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const queryRaw = req.query.query ? req.query.query.toString().toLowerCase() : "all";
@@ -30,8 +33,18 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
     const querySnapshot = await getDocs(jobsQuery);
     const jobsData: any[] = [];
     querySnapshot.forEach((docSnapshot) => {
-      jobsData.push({ id: docSnapshot.id, ...docSnapshot.data() });
+      // No need to fetch form as per requirements
+      const jobData = docSnapshot.data();
+      const { applications, form, ...jobInfo } = jobData;
+      
+      // Add application count instead of full applications array
+      jobsData.push({ 
+        id: docSnapshot.id, 
+        ...jobInfo,
+        applicationCount: applications ? applications.length : 0
+      });
     });
+    
     res.status(200).json({
       statusCode: 200,
       message: "Jobs fetched",
@@ -43,36 +56,54 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
 };
 
 // GET /jobs/:id
-
 export const getJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const jobId = req.params.id;
     const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
     const querySnapshot = await getDocs(jobsQuery);
+    
     if (querySnapshot.empty) {
-    res.status(404).json({ success: false, message: "Job not found" });
-    return;
+      res.status(404).json({ success: false, message: "Job not found" });
+      return;
     }
+    
     const jobDoc = querySnapshot.docs[0];
-
     if (!jobDoc.exists()) {
       res.status(404).json({ success: false, message: "Job not found" });
       return;
     }
     
     const jobData = jobDoc.data() as any;
-
-
-    // remove this shit
-    let applications = [];
-    if (jobData.applications && Array.isArray(jobData.applications)) {
-      applications = jobData.applications.map((app: any) => ({ form: app.form }));
+    
+    // Check if job is expired
+    const deadline = jobData.deadline?.toDate() || new Date(jobData.deadline);
+    const now = new Date();
+    if (deadline < now) {
+      res.status(400).json({ success: false, message: "This job posting has expired" });
+      return;
     }
+    
+    // Check if student has already applied
+    const student = (req as AuthenticatedRequest).user;
+    if (student && jobData.applications) {
+      const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
+      if (hasApplied) {
+        res.status(400).json({ success: false, message: "You have already applied for this job" });
+        return;
+      }
+    }
+    
+    // Get form without applications
+    const { applications, ...jobInfo } = jobData;
     
     res.status(200).json({
       statusCode: 200,
       message: "Job fetched",
-      job: { id: jobDoc.id, ...jobData, applications }
+      job: { 
+        id: jobDoc.id, 
+        ...jobInfo,
+        applicationCount: applications ? applications.length : 0
+      }
     });
   } catch (error) {
     next(error);
@@ -80,32 +111,63 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
 };
 
 // POST /jobs/:id/apply
-
-export const applyJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const applyJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const jobId = req.params.id;
     const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
     const querySnapshot = await getDocs(jobsQuery);
+    
     if (querySnapshot.empty) {
-      res.status(404).json({ success: false, message: "Job not found or has expired" });
+      res.status(404).json({ success: false, message: "Job not found" });
       return;
     }
+    
     const jobDoc = querySnapshot.docs[0];
     const jobDocRef = jobDoc.ref;
-
-    // todo - ADD ADMIN MIDDLEWARE
-    // if (!admin) {
-    //   res.status(401).json({ success: false, message: "Unauthorized" });
-    //   return;
-    // }
-
-    const student = (req as any).user;
+    const jobData = jobDoc.data();
     
+    // Check if job is expired
+    const deadline = jobData.deadline?.toDate() || new Date(jobData.deadline);
+    const now = new Date();
+    if (deadline < now) {
+      res.status(400).json({ success: false, message: "This job posting has expired" });
+      return;
+    }
+    
+    // Get student info
+    const student = req.user;
+    if (!student) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+    
+    // Check if student has already applied
+    if (jobData.applications) {
+      const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
+      if (hasApplied) {
+        res.status(400).json({ success: false, message: "You have already applied for this job" });
+        return;
+      }
+    }
+    
+    // Get student details to add to application
+    const studentRef = doc(db, "students", student.id);
+    const studentDoc = await getDoc(studentRef);
+    
+    if (!studentDoc.exists()) {
+      res.status(404).json({ success: false, message: "Student record not found" });
+      return;
+    }
+    
+    const studentData = studentDoc.data();
+    
+    // Get form data from request
     let jobApplicationForm = req.body.form;
     if (!jobApplicationForm) {
       res.status(400).json({ success: false, message: "Application form is required" });
       return;
     }
+    
     if (typeof jobApplicationForm === "string") {
       try {
         jobApplicationForm = JSON.parse(jobApplicationForm);
@@ -114,76 +176,51 @@ export const applyJob = async (req: Request, res: Response, next: NextFunction):
         return;
       }
     }
-
+    
+    // Add student info to form
+    jobApplicationForm = {
+      ...jobApplicationForm,
+      studentName: `${studentData.firstName} ${studentData.lastName}`,
+      contactNumber: studentData.mobile || "Not provided",
+      email: studentData.regEmail,
+      cgpa: studentData.cgpa || 0,
+      resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
+    };
+    
+    // Create application object
+    const applicationId = uuidv4();
+    
+    // Create a new document in the jobApplications collection
     const jobApplication = {
-      uuid: uuidv4(),
-      job: jobId,
-      student: student.id,
+      id: applicationId,
+      jobId: jobId,
+      studentId: student.id,
       form: jobApplicationForm,
-      createdAt: new Date(), 
+      createdAt: new Date(),
       status: "Pending"
     };
-
-
-    try {
-        // Try updating the job document by appending the new application
-        await updateDoc(jobDocRef, {
-          applications: arrayUnion(jobApplication)
-        });
-        console.log("Application successfully added.");   
-      } catch (error) {
-        // Log the error to identify if it's a permission issue or another error
-        console.error("Error updating document:", error);
-        throw error; // rethrow so that the error middleware can handle it if needed
-      }
-
+    
+    // Add to jobApplications collection
+    await addDoc(collection(db, "jobApplications"), jobApplication);
+    
+    // Update the job's application count
+    await updateDoc(jobDocRef, {
+      applicationCount: increment(1),
+      applications: arrayUnion({
+        id: applicationId,
+        student: student.id,
+        createdAt: new Date()
+      })
+    });
+    
     res.status(200).json({
       statusCode: 200,
-      message: "Application submitted and confirmation email sent",
-      jobApplication
+      message: "Application submitted successfully",
+      applicationId
     });
-    
   } catch (error) {
+    console.error("Error applying for job:", error);
     next(error);
   }
 };
 
-// POST /jobs/admin
-
-export const addJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-
-    const { title, jd, location, salaryPackage, eligibility, skills, deadline, form, recruiter, job_type } = req.body;
-
-    if (!title || !jd || !location || !salaryPackage || !eligibility || !skills || !deadline || !recruiter || !job_type) {
-      res.status(400).json({ success: false, message: "Missing required job fields" });
-      return;
-    }
-    
-    const newJob = {
-      title,                           
-      jd,                             
-      location,                      
-      package: salaryPackage,         
-      eligibility,                    
-      skills,                          
-      deadline,                       
-      form,                           
-      recruiter,                      
-      job_type,                       
-      applications: [],                
-      createdAt: serverTimestamp()    
-    };
-
-    const jobRef = await addDoc(collection(db, "jobs"), newJob);
-    await updateDoc(jobRef, { job_id: jobRef.id });
-
-    res.status(201).json({
-      success: true,
-      message: "Job created successfully",
-      job_id: jobRef.id
-    });
-  } catch (error) {
-    next(error);
-  }
-};
