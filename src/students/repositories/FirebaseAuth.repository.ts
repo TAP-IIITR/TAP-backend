@@ -21,7 +21,7 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { validateIIITREmail, extractRollNumber } from '../../utils/validator';
+import { validateIIITREmail, extractRollNumber, extractBatchFromRollNumber, extractBranchFromRollNumber } from '../../utils/validator';
 
 export class FirebaseAuthRepository implements IAuthRepository {
   private readonly studentsCollection = 'students';
@@ -114,6 +114,10 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Check if CGPA exists for this roll number
       const cgpa = await this.checkCGPAExists(rollNumber);
       
+      // Ensure batch and branch exist or extract them
+      const batch = student.batch || extractBatchFromRollNumber(rollNumber);
+      const branch = student.branch || extractBranchFromRollNumber(rollNumber);
+      
       // Store in Firestore using roll number as document ID
       const studentToSave = {
         ...studentData,
@@ -121,7 +125,9 @@ export class FirebaseAuthRepository implements IAuthRepository {
         uid: userCredential.user.uid,
         emailVerified: false,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        batch,
+        branch
       };
       
       // Add CGPA if it exists
@@ -134,6 +140,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
       return {
         ...studentData,
         id: rollNumber,
+        batch,
+        branch,
         ...(cgpa !== null && { cgpa })
       };
     } catch (error) {

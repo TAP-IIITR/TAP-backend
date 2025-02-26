@@ -6,7 +6,7 @@ import { SERVER_CONFIG } from '../../config/serverConfig';
 import { AuthenticatedRequest } from '../../types/express';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
 import { AuthError } from '../../errors/Auth-Error';
-import { extractRollNumber, validateIIITREmail } from '../../utils/validator';
+import { extractBatchFromRollNumber, extractBranchFromRollNumber, extractRollNumber, validateIIITREmail } from '../../utils/validator';
 
 const authService = new AuthService(new FirebaseAuthRepository());
 
@@ -32,6 +32,10 @@ export const register: RequestHandler = async (req, res, next) => {
     if (!rollNumber) {
       throw new BadRequestError('Could not extract roll number from email');
     }
+    
+    // Extract batch and branch from roll number
+    const batch = extractBatchFromRollNumber(rollNumber);
+    const branch = extractBranchFromRollNumber(rollNumber);
     const cgpa = 0;
 
     const student = {
@@ -43,6 +47,8 @@ export const register: RequestHandler = async (req, res, next) => {
       mobile,
       linkedin,
       password,
+      batch,
+      branch,
       cgpa
     };
 
@@ -64,6 +70,7 @@ export const register: RequestHandler = async (req, res, next) => {
     next(error);
   }
 };
+
 
 export const login: RequestHandler = async (req, res, next) => {
   try {
