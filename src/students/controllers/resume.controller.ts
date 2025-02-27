@@ -45,17 +45,17 @@ export const uploadResume = async (
       const file = req.file;
       if (!file) {
         throw new NotFoundError('File upload error');
-
       }
 
-      const studentId = req.user?.id;
-      if (!studentId) {
+      // Use the existing id property which now contains the rollNumber
+      const rollNumber = req.user?.id;
+      if (!rollNumber) {
         throw new AuthError('Unauthorized');
       }
 
       try {
         // Get upload URL from S3 with proper error handling
-        const uploadUrl = await resumeService.getUploadUrl(studentId, file.mimetype);
+        const uploadUrl = await resumeService.getUploadUrl(rollNumber, file.mimetype);
         
         // Upload to S3 with proper error handling
         const s3Response = await fetch(uploadUrl, {
@@ -76,7 +76,7 @@ export const uploadResume = async (
         const publicUrl = uploadUrl.split('?')[0];
 
         // Update Firestore with the resume URL
-        await updateFirestoreResumeUrl(studentId, publicUrl);
+        await updateFirestoreResumeUrl(rollNumber, publicUrl);
 
         res.status(200).json({
           success: true,
@@ -94,9 +94,10 @@ export const uploadResume = async (
   });
 };
 
-const updateFirestoreResumeUrl = async (studentId: string, url: string) => {
+const updateFirestoreResumeUrl = async (rollNumber: string, url: string) => {
   try {
-    const studentRef = doc(db, 'students', studentId);
+    // Using rollNumber as document ID
+    const studentRef = doc(db, 'students', rollNumber);
     await updateDoc(studentRef, {
       resume: {
         url,
@@ -115,9 +116,10 @@ export const updateResume = async (
 ) => {
   try {
     const { resumeUrl } = req.body;
-    const studentId = req.user?.id;
+    // Use the existing id property which now contains the rollNumber
+    const rollNumber = req.user?.id;
 
-    if (!studentId) {
+    if (!rollNumber) {
        res.status(401).json({
         success: false,
         error: 'Unauthorized'
@@ -126,10 +128,10 @@ export const updateResume = async (
     }
 
     // Delete old resume if exists
-    await resumeService.deleteCurrentResume(studentId);
+    await resumeService.deleteCurrentResume(rollNumber);
     
     // Update with new resume URL
-    await resumeService.updateResumeUrl(studentId, resumeUrl);
+    await resumeService.updateResumeUrl(rollNumber, resumeUrl);
 
     res.status(200).json({
       success: true,
@@ -137,7 +139,6 @@ export const updateResume = async (
     });
   } catch (error) {
     throw new NotFoundError('File upload error');
-
   }
 };
 
@@ -147,9 +148,10 @@ export const getResume = async (
   next: NextFunction
 ) => {
   try {
-    const studentId = req.user?.id;
+    // Use the existing id property which now contains the rollNumber
+    const rollNumber = req.user?.id;
 
-    if (!studentId) {
+    if (!rollNumber) {
        res.status(401).json({
         success: false,
         error: 'Unauthorized'
@@ -157,14 +159,14 @@ export const getResume = async (
       return;
     }
 
-    const resumeUrl = await resumeService.getResume(studentId);
+    const resumeUrl = await resumeService.getResume(rollNumber);
 
     if (!resumeUrl) {
        res.status(404).json({
         success: false,
         error: 'Resume not found'
       });
-      return   ;
+      return;
     }
 
     res.status(200).json({
@@ -173,6 +175,5 @@ export const getResume = async (
     });
   } catch (error) {
     throw new NotFoundError('Could get file');
-
   }
 };

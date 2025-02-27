@@ -7,16 +7,16 @@ import { BadRequestError } from '../../errors/Bad-Request-Error';
 export class ResumeService {
   constructor(private resumeRepository: IResumeRepository) {}
 
-  async getUploadUrl(studentId: string, fileType: string): Promise<string> {
+  async getUploadUrl(rollNumber: string, fileType: string): Promise<string> {
     if (fileType !== 'application/pdf') {
       throw new BadRequestError("Invalid file type. Only PDF files are allowed");
     }
 
-    return await this.resumeRepository.generateUploadUrl(studentId, fileType);
+    return await this.resumeRepository.generateUploadUrl(rollNumber, fileType);
   }
 
-  async updateResumeUrl(studentId: string, url: string): Promise<void> {
-    const studentRef = doc(db, 'students', studentId);
+  async updateResumeUrl(rollNumber: string, url: string): Promise<void> {
+    const studentRef = doc(db, 'students', rollNumber);
     await updateDoc(studentRef, {
       resume: {
         url,
@@ -25,17 +25,16 @@ export class ResumeService {
     });
   }
 
-  async deleteCurrentResume(studentId: string): Promise<void> {
-    await this.resumeRepository.deleteResume(studentId);
+  async deleteCurrentResume(rollNumber: string): Promise<void> {
+    await this.resumeRepository.deleteResume(rollNumber);
     
-    const studentRef = doc(db, 'students', studentId);
+    const studentRef = doc(db, 'students', rollNumber);
     await updateDoc(studentRef, {
       resume: null
     });
   }
 
-  async getResume(studentId: string): Promise<string | null> {
-    return await this.resumeRepository.getResumeUrl(studentId);
+  async getResume(rollNumber: string): Promise<string | null> {
+    return await this.resumeRepository.getResumeUrl(rollNumber);
   }
 }
-

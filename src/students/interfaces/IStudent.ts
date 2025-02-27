@@ -4,7 +4,12 @@ export interface IStudent {
   lastName: string;
   regEmail: string;
   mobile: string;
+  rollNumber: string;
   linkedin: string;
+  batch: string;
+  branch: string;
+  cgpa: number;
+  role: string 
   resume?: {
     url: string;
     lastUpdated: Date;

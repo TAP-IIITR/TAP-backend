@@ -26,7 +26,8 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<{ id: string; token: string }> {
+  async login(email: string, password: string): Promise<{ id: string; token: string }>
+  {
     const student = await this.authRepository.findByEmail(email);
     console.log('student is ',student)
     if (!student) {
@@ -34,7 +35,11 @@ export class AuthService implements IAuthService {
     }
 
     try {
+      // const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("Attempting login with:", email, password);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("Login successful:", userCredential);
+
       
       if (!userCredential.user.emailVerified) {
         // Send a new verification email
@@ -44,13 +49,15 @@ export class AuthService implements IAuthService {
   
       // Get the user ID from Firebase Auth
       const userId = userCredential.user.uid;
-  
+      const rollNumber = student.rollNumber
+
+
       // Update email verification status using the correct user ID
-      await this.authRepository.updateEmailVerificationStatus(userId);
+      await this.authRepository.updateEmailVerificationStatus(rollNumber);
       
       // Generate JWT token with proper payload
       const token = generateJWT({ 
-        id: userId, 
+        id: rollNumber, 
         role: 'student'
       });
   

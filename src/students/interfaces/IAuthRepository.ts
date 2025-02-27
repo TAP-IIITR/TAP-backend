@@ -2,7 +2,7 @@ import { IStudent } from "./IStudent";
 
 export interface IAuthRepository {
     findByEmail(email: string): Promise<IStudent | null>;
-
+    findByRollNumber(rollNumber:string): Promise<IStudent| null >
     create(student: IStudent): Promise<IStudent>;
 
     updatePassword(email: string, newPassword: string): Promise<void>;
