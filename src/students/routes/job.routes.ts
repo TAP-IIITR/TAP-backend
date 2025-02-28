@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  addJob,
   getJobs,
   getJob,
   applyJob,
@@ -38,7 +37,7 @@ router.post(
   ],
   checkAuth,
   validateRequest,
-  addJob
+  
 );
 
 // GET /jobs
