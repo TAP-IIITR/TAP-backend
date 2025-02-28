@@ -56,6 +56,7 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
 };
 
 // GET /jobs/:id
+// GET /jobs/:id - Modified version
 export const getJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const jobId = req.params.id;
@@ -83,18 +84,45 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
       return;
     }
     
-    // Check if student has already applied
-    const student = (req as AuthenticatedRequest).user;
-    if (student && jobData.applications) {
-      const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
-      if (hasApplied) {
-        res.status(400).json({ success: false, message: "You have already applied for this job" });
-        return;
-      }
-    }
-    
     // Get form without applications
     const { applications, ...jobInfo } = jobData;
+    let formWithStudentInfo = jobInfo.form || {};
+
+    // Get student info and add to form if student is authenticated
+    const student = (req as AuthenticatedRequest).user;
+    if (student) {
+      // Check if student has already applied
+      if (jobData.applications) {
+        const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
+        if (hasApplied) {
+          res.status(400).json({ success: false, message: "You have already applied for this job" });
+          return;
+        }
+      }
+      
+      // Get student details to pre-fill the form
+      try {
+        const studentRef = doc(db, "students", student.id);
+        const studentDoc = await getDoc(studentRef);
+        
+        if (studentDoc.exists()) {
+          const studentData = studentDoc.data();
+          
+          // Add student info to the form
+          formWithStudentInfo = {
+            ...formWithStudentInfo,
+            studentName: `${studentData.firstName} ${studentData.lastName}`,
+            contactNumber: studentData.mobile || "Not provided",
+            email: studentData.regEmail,
+            cgpa: studentData.cgpa || 0,
+            resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
+          };
+        }
+      } catch (err) {
+        console.error("Error fetching student data for form:", err);
+        // Continue without student data if there's an error
+      }
+    }
     
     res.status(200).json({
       statusCode: 200,
@@ -102,6 +130,7 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
       job: { 
         id: jobDoc.id, 
         ...jobInfo,
+        form: formWithStudentInfo, // Send the form with student info
         applicationCount: applications ? applications.length : 0
       }
     });
@@ -150,17 +179,6 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       }
     }
     
-    // Get student details to add to application
-    const studentRef = doc(db, "students", student.id);
-    const studentDoc = await getDoc(studentRef);
-    
-    if (!studentDoc.exists()) {
-      res.status(404).json({ success: false, message: "Student record not found" });
-      return;
-    }
-    
-    const studentData = studentDoc.data();
-    
     // Get form data from request
     let jobApplicationForm = req.body.form;
     if (!jobApplicationForm) {
@@ -177,39 +195,52 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       }
     }
     
-    // Add student info to form
-    jobApplicationForm = {
-      ...jobApplicationForm,
-      studentName: `${studentData.firstName} ${studentData.lastName}`,
-      contactNumber: studentData.mobile || "Not provided",
-      email: studentData.regEmail,
-      cgpa: studentData.cgpa || 0,
-      resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
-    };
+    // Get student details only if form is missing student information
+    if (!jobApplicationForm.studentName || !jobApplicationForm.email) {
+      const studentRef = doc(db, "students", student.id);
+      const studentDoc = await getDoc(studentRef);
+      
+      if (!studentDoc.exists()) {
+        res.status(404).json({ success: false, message: "Student record not found" });
+        return;
+      }
+      
+      const studentData = studentDoc.data();
+      
+      // Add student info to form
+      jobApplicationForm = {
+        ...jobApplicationForm,
+        studentName: `${studentData.firstName} ${studentData.lastName}`,
+        contactNumber: studentData.mobile || "Not provided",
+        email: studentData.regEmail,
+        cgpa: studentData.cgpa || 0,
+        resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
+      };
+    }
     
     // Create application object
     const applicationId = uuidv4();
     
-    // Create a new document in the jobApplications collection
+    // Create application document to store in jobApplications collection
     const jobApplication = {
       id: applicationId,
       jobId: jobId,
       studentId: student.id,
       form: jobApplicationForm,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
       status: "Pending"
     };
     
     // Add to jobApplications collection
     await addDoc(collection(db, "jobApplications"), jobApplication);
     
-    // Update the job's application count
+    // Update the job's application count and add to applications array
     await updateDoc(jobDocRef, {
       applicationCount: increment(1),
       applications: arrayUnion({
         id: applicationId,
         student: student.id,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       })
     });
     
