@@ -12,17 +12,9 @@ const authService = new AuthService(new FirebaseAuthRepository());
 
 export const register: RequestHandler = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new BadRequestError('Invalid input data');
-    }
 
     const { first_name, last_name, reg_email, mobile, linkedin, password } = req.body;
     const role: string = "student"
-    
-    if (!first_name || !last_name || !reg_email || !password) {
-      throw new BadRequestError('Missing required fields');
-    }
 
     if (!validateIIITREmail(reg_email)) {
       throw new BadRequestError('Invalid email format. Must be in format: name.2023ug1058@iiitranchi.ac.in');
@@ -32,7 +24,7 @@ export const register: RequestHandler = async (req, res, next) => {
     if (!rollNumber) {
       throw new BadRequestError('Could not extract roll number from email');
     }
-    
+
     // Extract batch and branch from roll number
     const batch = extractBatchFromRollNumber(rollNumber);
     const branch = extractBranchFromRollNumber(rollNumber);
@@ -60,13 +52,13 @@ export const register: RequestHandler = async (req, res, next) => {
       maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: 'Student successfully registered', 
-      data: { id, rollNumber } 
+    res.status(201).json({
+      success: true,
+      message: 'Student successfully registered',
+      data: { id, rollNumber }
     });
   } catch (error) {
-    console.log(error,"is our error")
+    console.log(error, "is our error")
     next(error);
   }
 };
@@ -75,9 +67,6 @@ export const register: RequestHandler = async (req, res, next) => {
 export const login: RequestHandler = async (req, res, next) => {
   try {
     const { reg_email, password } = req.body;
-    if (!reg_email || !password) {
-      throw new BadRequestError('Email and password are required');
-    }
 
     const { id, token } = await authService.login(reg_email, password);
 
@@ -87,7 +76,7 @@ export const login: RequestHandler = async (req, res, next) => {
       maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
     });
 
-    res.status(200).json({ success: true, message: 'Login successful', data: { id,token } });
+    res.status(200).json({ success: true, message: 'Login successful', data: { id, token } });
   } catch (error) {
     next(error);
   }
@@ -111,9 +100,6 @@ export const logout: RequestHandler = async (req: AuthenticatedRequest, res, nex
 export const resetPassword: RequestHandler = async (req, res, next) => {
   try {
     const { reg_email } = req.body;
-    if (!reg_email) {
-      throw new BadRequestError('Email is required');
-    }
 
     await authService.resetPassword(reg_email);
     res.status(200).json({ success: true, message: 'Password reset email sent successfully' });
@@ -122,6 +108,7 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
   }
 };
 
+// don't need if using firebase default for password reset.
 export const confirmResetPassword: RequestHandler = async (req, res, next) => {
   try {
     const { code, new_password } = req.body;

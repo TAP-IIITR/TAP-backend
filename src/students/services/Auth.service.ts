@@ -9,14 +9,14 @@ import { AuthError } from '../../errors/Auth-Error';
 import { NotFoundError } from '../../errors/Not-Found-Error';
 
 export class AuthService implements IAuthService {
-  constructor(private authRepository: IAuthRepository) {}
+  constructor(private authRepository: IAuthRepository) { }
 
   async register(student: IStudent): Promise<{ id: string; token: string }> {
     const existingStudent = await this.authRepository.findByEmail(student.regEmail);
     if (existingStudent) {
       throw new BadRequestError('Student with this email already exists');
     }
-    
+
     try {
       const newStudent = await this.authRepository.create(student);
       const token = generateJWT({ id: newStudent.id!, role: 'student' });
@@ -26,27 +26,23 @@ export class AuthService implements IAuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<{ id: string; token: string }>
-  {
+  async login(email: string, password: string): Promise<{ id: string; token: string }> {
     const student = await this.authRepository.findByEmail(email);
-    console.log('student is ',student)
     if (!student) {
       throw new NotFoundError('Student with this email does not exist');
     }
 
     try {
       // const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Attempting login with:", email, password);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Login successful:", userCredential);
 
-      
+
       if (!userCredential.user.emailVerified) {
         // Send a new verification email
         await sendEmailVerification(userCredential.user);
         throw new AuthError('Email not verified. Verification email has been sent.');
       }
-  
+
       // Get the user ID from Firebase Auth
       const userId = userCredential.user.uid;
       const rollNumber = student.rollNumber
@@ -54,27 +50,27 @@ export class AuthService implements IAuthService {
 
       // Update email verification status using the correct user ID
       await this.authRepository.updateEmailVerificationStatus(rollNumber);
-      
+
       // Generate JWT token with proper payload
-      const token = generateJWT({ 
-        id: rollNumber, 
+      const token = generateJWT({
+        id: rollNumber,
         role: 'student'
       });
-  
-      return { 
-        id: userId, 
-        token 
+
+      return {
+        id: userId,
+        token
       };
-  
+
     } catch (error: any) {
       if ((error as any).code === 'auth/wrong-password') {
         throw new AuthError('Invalid password');
       }
-      console.log("error is ",error)
+      console.log("error is ", error)
       throw new BadRequestError(error.message);
     }
   }
-  
+
 
   async logout(id: string): Promise<void> {
     try {
@@ -89,7 +85,7 @@ export class AuthService implements IAuthService {
     if (!student) {
       throw new NotFoundError('Student not found');
     }
-    
+
     try {
       await this.authRepository.initiatePasswordReset(email);
     } catch (error) {
