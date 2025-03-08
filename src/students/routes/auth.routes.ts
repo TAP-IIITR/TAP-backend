@@ -1,12 +1,12 @@
 // routes/auth.routes.ts
 import { Router } from "express";
 import { body } from "express-validator";
-import { 
-  register, 
-  login, 
-  logout, 
-  resetPassword, 
-  confirmResetPassword 
+import {
+  register,
+  login,
+  logout,
+  resetPassword,
+  confirmResetPassword
 } from "../controllers/auth.controllers";
 import { checkAuth } from "../../middleware/auth.middleware";
 import { validateRequest } from "../../middleware/validation.middleware";
@@ -47,6 +47,12 @@ const loginValidation = [
 // Public routes
 router.post("/register", registerValidation, validateRequest, register);
 router.post("/login", loginValidation, validateRequest, login);
+router.post(
+  "/forgot-password",
+  [body("reg_email").isEmail().withMessage("Please provide a valid email")],
+  validateRequest,
+  resetPassword
+);
 
 // Protected routes
 router.post("/logout", checkAuth, logout);
@@ -58,6 +64,7 @@ router.post(
   resetPassword
 );
 
+// don't need if using firebase default for password reset.
 router.post(
   "/confirm-reset-password",
   checkAuth,

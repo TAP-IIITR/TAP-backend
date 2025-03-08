@@ -3,6 +3,7 @@ import { auth, db } from '../config/firebase';
 import { verifyJWT } from '../utils/jwt';
 import { AuthError } from '../errors/Auth-Error';
 import { doc, getDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -26,7 +27,7 @@ export const checkAuth = async (
 
     // Verify JWT token - this will contain the roll number as ID
     const decoded = verifyJWT(token);
-    
+
     // Check if the user is logged in to Firebase Auth
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -41,7 +42,13 @@ export const checkAuth = async (
 
     // Get the student data
     const studentData = studentDoc.data();
-    
+
+    // Check if mail is verified
+    if (!studentData.emailVerified) {
+      await sendEmailVerification(currentUser!);
+      throw new AuthError('Email not verified. Please verify your email.');
+    }
+
     // Verify that the current Firebase user UID matches the one stored in Firestore
     if (studentData.uid !== currentUser.uid) {
       throw new AuthError('Invalid authentication. Please login again.');
