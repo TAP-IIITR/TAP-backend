@@ -13,15 +13,14 @@ router.put(
   "/",
   checkAuth,
   [
-    body("firstName")
+    body("firstName").optional()
       .isString()
       .withMessage("firstName must be a string"),
-    body("lastName")
+    body("lastName").optional()
       .isString()
       .withMessage("lastName must be a string"),
     body("mobile").optional().isMobilePhone("any").withMessage("Invalid mobile number"),
     body("linkedin").optional().isURL().withMessage("LinkedIn must be a valid URL"),
-    body("anyOtherDemands").optional().isString().withMessage("anyOtherDemands must be a string"),
   ],
   validateRequest,
   updateDashboard
