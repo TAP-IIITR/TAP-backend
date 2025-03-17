@@ -43,6 +43,7 @@ export const uploadResume = async (
       }
 
       const file = req.file;
+      console.log("file is ",file)
       if (!file) {
         throw new NotFoundError('File upload error');
       }
@@ -89,6 +90,7 @@ export const uploadResume = async (
         throw new BadRequestError('File upload error');
       }
     } catch (error) {
+      console.log("error is ",error);
       next(error);
     }
   });
@@ -105,6 +107,8 @@ const updateFirestoreResumeUrl = async (rollNumber: string, url: string) => {
       }
     });
   } catch (error) {
+    console.log("error is ",error);
+
     throw new BadRequestError('Database error');
   }
 };
@@ -138,6 +142,8 @@ export const updateResume = async (
       message: 'Resume updated successfully'
     });
   } catch (error) {
+    console.log("error iss ",error);
+
     throw new NotFoundError('File upload error');
   }
 };
