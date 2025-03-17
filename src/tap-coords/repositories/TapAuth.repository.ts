@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 
 export class TapAuthRepository {
-  private readonly tapCollection = 'tap_coordinators';
+  private readonly tapCollection = 'students';
 
   async findByEmail(email: string): Promise<ITapCoordinator | null> {
     try {
