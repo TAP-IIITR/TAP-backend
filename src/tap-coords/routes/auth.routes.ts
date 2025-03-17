@@ -20,8 +20,6 @@ router.post(
 router.post(
   '/login',
   [
-    body('email').isEmail().withMessage('Please provide a valid email'),
-    body('password').notEmpty().withMessage('You must supply a password'),
   ],
   validateRequest,
   login
