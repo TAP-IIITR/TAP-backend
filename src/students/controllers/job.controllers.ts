@@ -15,7 +15,6 @@ import {
 import { db } from "../../config/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../../types/express";
-import { BadRequestError } from "../../errors/Bad-Request-Error";
 
 // GET /jobs?query={job_type}
 export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -36,15 +35,15 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
       // No need to fetch form as per requirements
       const jobData = docSnapshot.data();
       const { applications, form, ...jobInfo } = jobData;
-      
+
       // Add application count instead of full applications array
-      jobsData.push({ 
-        id: docSnapshot.id, 
+      jobsData.push({
+        id: docSnapshot.id,
         ...jobInfo,
         applicationCount: applications ? applications.length : 0
       });
     });
-    
+
     res.status(200).json({
       statusCode: 200,
       message: "Jobs fetched",
@@ -57,39 +56,39 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
 
 // GET /jobs/:id
 // GET /jobs/:id - Modified version
-export const getJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const jobId = req.params.id;
     const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
     const querySnapshot = await getDocs(jobsQuery);
-    
+
     if (querySnapshot.empty) {
       res.status(404).json({ success: false, message: "Job not found" });
       return;
     }
-    
+
     const jobDoc = querySnapshot.docs[0];
     if (!jobDoc.exists()) {
       res.status(404).json({ success: false, message: "Job not found" });
       return;
     }
-    
+
     const jobData = jobDoc.data() as any;
-    
+
     // Check if job is expired
-    const deadline = jobData.deadline?.toDate() || new Date(jobData.deadline);
+    const deadline = new Date(jobData.deadline) || jobData.deadline?.toDate();
     const now = new Date();
     if (deadline < now) {
       res.status(400).json({ success: false, message: "This job posting has expired" });
       return;
     }
-    
+
     // Get form without applications
     const { applications, ...jobInfo } = jobData;
-    let formWithStudentInfo = jobInfo.form || {};
+    let formWithStudentInfo = JSON.parse(jobInfo.form) || {};
 
     // Get student info and add to form if student is authenticated
-    const student = (req as AuthenticatedRequest).user;
+    const student = req.user;
     if (student) {
       // Check if student has already applied
       if (jobData.applications) {
@@ -99,15 +98,15 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
           return;
         }
       }
-      
+
       // Get student details to pre-fill the form
       try {
         const studentRef = doc(db, "students", student.id);
         const studentDoc = await getDoc(studentRef);
-        
+
         if (studentDoc.exists()) {
           const studentData = studentDoc.data();
-          
+
           // Add student info to the form
           formWithStudentInfo = {
             ...formWithStudentInfo,
@@ -123,14 +122,14 @@ export const getJob = async (req: Request, res: Response, next: NextFunction): P
         // Continue without student data if there's an error
       }
     }
-    
+
     res.status(200).json({
       statusCode: 200,
       message: "Job fetched",
-      job: { 
-        id: jobDoc.id, 
+      job: {
+        id: jobDoc.id,
         ...jobInfo,
-        form: formWithStudentInfo, // Send the form with student info
+        form: JSON.stringify(formWithStudentInfo), // Send the form with student info
         applicationCount: applications ? applications.length : 0
       }
     });
@@ -145,31 +144,31 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     const jobId = req.params.id;
     const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
     const querySnapshot = await getDocs(jobsQuery);
-    
+
     if (querySnapshot.empty) {
       res.status(404).json({ success: false, message: "Job not found" });
       return;
     }
-    
+
     const jobDoc = querySnapshot.docs[0];
     const jobDocRef = jobDoc.ref;
     const jobData = jobDoc.data();
-    
+
     // Check if job is expired
-    const deadline = jobData.deadline?.toDate() || new Date(jobData.deadline);
+    const deadline = new Date(jobData.deadline) || jobData.deadline?.toDate();
     const now = new Date();
     if (deadline < now) {
       res.status(400).json({ success: false, message: "This job posting has expired" });
       return;
     }
-    
+
     // Get student info
     const student = req.user;
     if (!student) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
-    
+
     // Check if student has already applied
     if (jobData.applications) {
       const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
@@ -178,14 +177,14 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
         return;
       }
     }
-    
+
     // Get form data from request
     let jobApplicationForm = req.body.form;
     if (!jobApplicationForm) {
       res.status(400).json({ success: false, message: "Application form is required" });
       return;
     }
-    
+
     if (typeof jobApplicationForm === "string") {
       try {
         jobApplicationForm = JSON.parse(jobApplicationForm);
@@ -194,19 +193,19 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
         return;
       }
     }
-    
+
     // Get student details only if form is missing student information
     if (!jobApplicationForm.studentName || !jobApplicationForm.email) {
       const studentRef = doc(db, "students", student.id);
       const studentDoc = await getDoc(studentRef);
-      
+
       if (!studentDoc.exists()) {
         res.status(404).json({ success: false, message: "Student record not found" });
         return;
       }
-      
+
       const studentData = studentDoc.data();
-      
+
       // Add student info to form
       jobApplicationForm = {
         ...jobApplicationForm,
@@ -217,10 +216,10 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
         resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
       };
     }
-    
+
     // Create application object
     const applicationId = uuidv4();
-    
+
     // Create application document to store in jobApplications collection
     const jobApplication = {
       id: applicationId,
@@ -230,10 +229,10 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       createdAt: serverTimestamp(),
       status: "Pending"
     };
-    
+
     // Add to jobApplications collection
     await addDoc(collection(db, "jobApplications"), jobApplication);
-    
+
     // Update the job's application count and add to applications array
     await updateDoc(jobDocRef, {
       applicationCount: increment(1),
@@ -243,7 +242,7 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
         createdAt: serverTimestamp()
       })
     });
-    
+
     res.status(200).json({
       statusCode: 200,
       message: "Application submitted successfully",

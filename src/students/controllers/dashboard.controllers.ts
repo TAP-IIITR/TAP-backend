@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebase";
+import { AuthenticatedRequest } from "../../types/express";
 
-export const getDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getDashboard = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const studentId = (req as any).user?.id;
+    const studentId = req.user?.id;
     if (!studentId) {
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
@@ -24,7 +25,11 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
         last_name: studentData.lastName,
         email: studentData.regEmail,
         resume: studentData.resume ? studentData.resume.url : null,
-        any_other_demands: studentData.anyOtherDemands || null,
+        mobile: studentData.mobile,
+        linkedin: studentData.linkedin,
+        cgpa: studentData.cgpa,
+        batch: studentData.batch,
+        branch: studentData.branch,
       },
     });
   } catch (error) {
@@ -39,15 +44,14 @@ export const updateDashboard = async (req: Request, res: Response, next: NextFun
       res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
-   
+
     const { firstName, lastName, mobile, linkedin, anyOtherDemands } = req.body;
     const updates: any = {};
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (mobile !== undefined) updates.mobile = mobile;
     if (linkedin !== undefined) updates.linkedin = linkedin;
-    if (anyOtherDemands !== undefined) updates.anyOtherDemands = anyOtherDemands;
-    
+
     updates.updatedAt = new Date();
 
     const studentRef = doc(db, "students", studentId);
