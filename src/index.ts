@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173", // Allow your frontend origin
+    origin: "*", // Allow your frontend origin
     credentials: true, // Allow cookies/credentials to be sent
   })
 );
