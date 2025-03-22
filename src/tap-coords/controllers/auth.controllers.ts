@@ -70,14 +70,15 @@ export const register: RequestHandler = async (req, res, next) => {
 
 export const login: RequestHandler = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      throw new BadRequestError('Email and password are required');
+    const { reg_email, password } = req.body;
+    // console.log("reg_email and password are ",reg_email,password)
+    if (!reg_email || !password) {
+      throw new BadRequestError('reg_email and password are required');
     }
 
     // Find coordinator in Firestore
     const tapRef = collection(db, TAP_COORDINATORS_COLLECTION);
-    const q = query(tapRef, where('regEmail', '==', email));
+    const q = query(tapRef, where('regEmail', '==', reg_email));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       throw new NotFoundError('Coordinator not found');
@@ -87,7 +88,7 @@ export const login: RequestHandler = async (req, res, next) => {
     const coordinator = { ...coordinatorDoc.data(), id: coordinatorDoc.id } as any;
 
     // Authenticate with Firebase
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, reg_email, password);
     if (!userCredential.user.emailVerified) {
       throw new AuthError('Email not verified. Please verify your email.');
     }

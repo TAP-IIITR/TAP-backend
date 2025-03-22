@@ -1,78 +1,139 @@
 import { AuthenticatedRequest } from "../../types/express";
-import { RequestHandler, Response } from "express";
+import { RequestHandler, Response, NextFunction } from "express";
+import { collection, doc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { db } from "../../config/firebase";
+import { BadRequestError } from "../../errors/Bad-Request-Error";
+import { NotFoundError } from "../../errors/Not-Found-Error";
+import { v4 as uuidv4 } from "uuid";
 
-const getAllRecruiters: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /*
-        Get all recruiters
+const RECRUITERS_COLLECTION = "recruiters";
 
-        Returns:
-            - recruiters array with basic details(sort by isVerified(False first))
+const getAllRecruiters: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    // Check if the user is a TAP Coordinator
+    if (req.user?.role !== "tap") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      return;
+    }
 
-        Errors: 
-            1. Auth Error(handled by middleware)
-            2. Check if the user is a TAP Coordinator(req.user.role === 'tap') (403 Forbidden)
-            3. Internal Server Error(500)
-    */
-}
+    // Fetch all recruiters, sort by isVerified (false first)
+    const recruitersRef = collection(db, RECRUITERS_COLLECTION);
+    const q = query(recruitersRef, orderBy("isVerified", "asc"));
+    const recruitersSnap = await getDocs(q);
 
-const getRecruiterById: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Get recruiter by ID
-        
-        Parameters:
-        - id: UUID (from req.params)
+    const recruiters = recruitersSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-        Returns:
-        - detailed recruiter information
+    res.status(200).json({
+      success: true,
+      message: "Recruiters retrieved successfully",
+      data: recruiters,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Request Validation (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Invalid ID format (400)
-        5. Recruiter not found (404)
-        6. Internal Server Error (500)
-    */
-}
+const getRecruiterById: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    // Check if the user is a TAP Coordinator
+    if (req.user?.role !== "tap") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      return;
+    }
 
-const verifyRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Verify a recruiter
-        
-        Parameters:
-        - id: UUID (from req.params)
+    const recruiterId = req.params.id;
+    if (!recruiterId || typeof recruiterId !== "string") {
+      throw new BadRequestError("Invalid recruiter ID format");
+    }
 
-        Returns:
-        - Success message
+    const recruiterRef = doc(db, RECRUITERS_COLLECTION, recruiterId);
+    const recruiterDoc = await getDoc(recruiterRef);
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Request Validation (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Invalid ID format (400)
-        5. Recruiter not found (404)
-        6. Internal Server Error (500)
-    */
-}
+    if (!recruiterDoc.exists()) {
+      throw new NotFoundError("Recruiter not found");
+    }
 
-const deleteRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
-    /* 
-        Delete a recruiter
-        
-        Parameters:
-        - id: UUID (from req.params)
+    res.status(200).json({
+      success: true,
+      message: "Recruiter retrieved successfully",
+      data: {
+        id: recruiterDoc.id,
+        ...recruiterDoc.data(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-        Returns:
-        - Success message
+const verifyRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    // Check if the user is a TAP Coordinator
+    if (req.user?.role !== "tap") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      return;
+    }
 
-        Errors:
-        1. Auth Error (handled by middleware)
-        2. Request Validation (handled by middleware)
-        3. Out of bound access (User not a coordinator) (403 Forbidden)
-        4. Invalid ID format (400)
-        5. Recruiter not found (404)
-        6. Internal Server Error (500)
-    */
-}
+    const recruiterId = req.params.id;
+    if (!recruiterId || typeof recruiterId !== "string") {
+      throw new BadRequestError("Invalid recruiter ID format");
+    }
+
+    const recruiterRef = doc(db, RECRUITERS_COLLECTION, recruiterId);
+    const recruiterDoc = await getDoc(recruiterRef);
+
+    if (!recruiterDoc.exists()) {
+      throw new NotFoundError("Recruiter not found");
+    }
+
+    // Update the recruiter's verification status
+    await updateDoc(recruiterRef, {
+      isVerified: true,
+      updatedAt: new Date(),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Recruiter verified successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    // Check if the user is a TAP Coordinator
+    if (req.user?.role !== "tap") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      return;
+    }
+
+    const recruiterId = req.params.id;
+    if (!recruiterId || typeof recruiterId !== "string") {
+      throw new BadRequestError("Invalid recruiter ID format");
+    }
+
+    const recruiterRef = doc(db, RECRUITERS_COLLECTION, recruiterId);
+    const recruiterDoc = await getDoc(recruiterRef);
+
+    if (!recruiterDoc.exists()) {
+      throw new NotFoundError("Recruiter not found");
+    }
+
+    // Delete the recruiter
+    await deleteDoc(recruiterRef);
+
+    res.status(200).json({
+      success: true,
+      message: "Recruiter deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export { getAllRecruiters, getRecruiterById, verifyRecruiter, deleteRecruiter };
