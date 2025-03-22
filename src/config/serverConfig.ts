@@ -24,7 +24,7 @@ export const SERVER_CONFIG = {
   
   // Cookie settings
   COOKIE_SECRET: process.env.COOKIE_SECRET || 'your-cookie-secret',
-  COOKIE_MAX_AGE: parseInt(process.env.COOKIE_MAX_AGE || '86400000'),
+  COOKIE_MAX_AGE: parseInt('86400000'),
   
   // CORS settings
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',

@@ -23,10 +23,12 @@ interface CGPARecord {
 export const getDashboard = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Verify user is TAP coordinator
+    console.log("CAME HERE ")
     if (req.user?.role !== 'tap') {
       res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
       return;
     }
+    console.log("HERE TOO")
     
     // Get dashboard statistics
     const stats = await getDashboardStats();
@@ -42,36 +44,57 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response, nex
 };
 
 async function getDashboardStats() {
-  const studentsRef = collection(db, "students");
-  const jobsRef = collection(db, "jobs");
-  const recruitersRef = collection(db, "recruiters");
+  try {
+    const studentsRef = collection(db, "students");
+    const jobsRef = collection(db, "jobs");
+    const recruitersRef = collection(db, "recruiters");
 
-  const [studentsSnap, jobsSnap, recruitersSnap] = await Promise.all([
-    getDocs(studentsRef),
-    getDocs(jobsRef),
-    getDocs(recruitersRef)
-  ]);
+    const [studentsSnap, jobsSnap, recruitersSnap] = await Promise.all([
+      getDocs(studentsRef),
+      getDocs(jobsRef),
+      getDocs(recruitersRef),
+    ]);
 
-  const totalStudents = studentsSnap.size;
-  const totalJobs = jobsSnap.size;
-  const totalRecruiters = recruitersSnap.size;
+    const totalStudents = studentsSnap.size;
+    const totalJobs = jobsSnap.size;
+    const totalRecruiters = recruitersSnap.size;
 
-  let totalApplications = 0;
-  jobsSnap.forEach(doc => {
-    const data = doc.data();
-    if (data.applications) {
-      totalApplications += data.applications.length;
-    }
-  });
+    // Calculate active jobs
+    const activeJobs = jobsSnap.docs.filter((doc) => doc.data().status === "active").length;
 
-  return {
-    totalStudents,
-    totalJobs,
-    totalRecruiters,
-    totalApplications
-  };
+    // Calculate pending verifications
+    const pendingVerifications = jobsSnap.docs.filter((doc) => doc.data().status === "pending_verification").length;
+
+    // Calculate total applications
+    let totalApplications = 0;
+    jobsSnap.forEach((doc) => {
+      const data = doc.data();
+      if (data.applications) {
+        totalApplications += data.applications.length;
+      }
+    });
+
+    // Calculate verified recruiters
+    const verifiedRecruiters = recruitersSnap.docs.filter((doc) => doc.data().isVerified).length;
+
+    // Calculate placed students
+    const placedStudents = studentsSnap.docs.filter((doc) => doc.data().placed === true).length;
+
+    return {
+      totalStudents,
+      totalJobs,
+      activeJobs,
+      totalRecruiters,
+      verifiedRecruiters,
+      totalApplications,
+      pendingVerifications,
+      placedStudents,
+    };
+  } catch (error) {
+    console.log("Can't get dashboard stats:", error);
+    throw error;
+  }
 }
-
 export const updateCGPA = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Verify user is TAP coordinator

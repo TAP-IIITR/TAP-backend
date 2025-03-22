@@ -87,43 +87,7 @@ Reset Tap Coordinator's password through email OTP verification.
 | `email` | String | ✅ Yes    | Registered email |
 
 **Step 2 - Verify OTP & Reset Password:**
-
-| Field          | Type   | Required | Description            |
-| -------------- | ------ | -------- | ---------------------- |
-| `email`        | String | ✅ Yes    | Registered email       |
-| `otp`          | String | ✅ Yes    | OTP received via email |
-| `new_password` | String | ✅ Yes    | New password           |
-
-### 🔄 Process
-
-1. Validate the request body.
-2. Check if the coordinator exists.
-3. Generate and send OTP to registered email.
-4. Verify OTP and update password.
-
-### 📤 Output
-
-✅ **Success Response:**
-
-**Step 1:**
-
-- **Status Code:** `200 OK`
-- **Message:** OTP sent successfully to registered email.
-
-**Step 2:**
-
-- **Status Code:** `200 OK`
-- **Message:** Password successfully reset.
-
-### ❌ Error Responses
-
-| Status Code | Description               |
-| ----------- | ------------------------- |
-| `400`       | Invalid input parameters. |
-| `404`       | Coordinator not found.    |
-| `401`       | Invalid or expired OTP.   |
-| `500`       | Internal server error.    |
-
+It will send use firebase's reset password service and reset password mail will be sent to use .
 ---
 
 ### 🏠 Dashboard Endpoints

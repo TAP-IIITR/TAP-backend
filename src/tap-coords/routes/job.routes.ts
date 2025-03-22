@@ -8,15 +8,19 @@ import {
     getJobById,
     updateJob,
     deleteJob,
-    getAllApplications
+    getAllApplications,
+    getPendingVerifications,
+    verifyJob,
+    updateApplicationStatus
 } from "../controllers/job.controllers";
+import { checkTapAuth } from "../../middleware/tapauth.middleware";
 
 const router = Router();
 
 // Create job
 router.post(
     "/",
-    checkAuth,
+    checkTapAuth,
     [
         body("title").notEmpty().withMessage("Title is required"),
         body("JD").notEmpty().withMessage("Job description is required"),
@@ -25,8 +29,6 @@ router.post(
         body("eligibility").notEmpty().withMessage("Eligibility criteria is required"),
         body("skills").isArray().withMessage("Skills must be an array"),
         body("deadline").isISO8601().withMessage("Valid deadline date is required"),
-        body("form").isObject().withMessage("Form structure is required"),
-        body("recruiter").isUUID().withMessage("Valid recruiter ID is required")
     ],
     validateRequest,
     createJob
@@ -35,7 +37,7 @@ router.post(
 // Get all jobs
 router.get(
     "/",
-    checkAuth,
+    checkTapAuth,
     validateRequest,
     getAllJobs
 );
@@ -43,10 +45,8 @@ router.get(
 // Get job by ID
 router.get(
     "/:id",
-    checkAuth,
-    [
-        param("id").isUUID().withMessage("Valid job ID is required")
-    ],
+    checkTapAuth,
+ 
     validateRequest,
     getJobById
 );
@@ -54,9 +54,8 @@ router.get(
 // Update job
 router.put(
     "/:id",
-    checkAuth,
+    checkTapAuth,
     [
-        param("id").isUUID().withMessage("Valid job ID is required"),
         body("title").optional().notEmpty().withMessage("Title cannot be empty"),
         body("JD").optional().notEmpty().withMessage("Job description cannot be empty"),
         body("location").optional().notEmpty().withMessage("Location cannot be empty"),
@@ -68,11 +67,39 @@ router.put(
     validateRequest,
     updateJob
 );
-
+// Add these routes to the existing tapJobRouter
+// router.put(
+//     "/applications/:jobId/:studentId",
+//     checkTapAuth,
+//     [
+//       param("jobId").isUUID().withMessage("Valid job ID is required"),
+//       param("studentId").isString().withMessage("Valid student ID is required"),
+//       body("status")
+//         .isIn(["selected", "rejected", "under_review", "pending"])
+//         .withMessage("Status must be 'selected', 'rejected', 'under_review', or 'pending'"),
+//     ],
+//     validateRequest,
+//     updateApplicationStatus
+//   );
+router.get(
+    "/pending-verifications",
+    checkTapAuth,
+    getPendingVerifications
+  );
+  
+  router.put(
+    "/verify/:id",
+    checkTapAuth,
+    [
+      body("action").isIn(["approve", "reject"]).withMessage("Action must be 'approve' or 'reject'"),
+    ],
+    validateRequest,
+    verifyJob
+  );
 // Delete job
 router.delete(
     "/:id",
-    checkAuth,
+    checkTapAuth,
     [
         param("id").isUUID().withMessage("Valid job ID is required")
     ],
@@ -81,11 +108,8 @@ router.delete(
 );
 
 router.get("/applications",
-    [
-        query("job").isUUID().withMessage("Valid job ID is required")
-    ],
-    validateRequest,
-    checkAuth,
+    // validateRequest,
+    // checkTapAuth,
     getAllApplications
 );
 
