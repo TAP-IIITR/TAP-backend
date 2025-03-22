@@ -10,10 +10,13 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "*", // Allow your frontend origin
+    origin: ["http://localhost:5173", "https://placements-iiitr.vercel.app"], // Allow frontend origins
     credentials: true, // Allow cookies/credentials to be sent
+    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
+    methods: ["GET", "POST", "PUT", "DELETE"], // Allow required methods
   })
 );
+
 app.use(cookieParser());
 
 // Student routes
