@@ -3,7 +3,11 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { AuthenticatedRequest } from "../../types/express";
 
-export const getDashboard = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getDashboard = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const studentId = req.user?.id;
     if (!studentId) {
@@ -24,18 +28,13 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response, nex
         first_name: studentData.firstName,
         last_name: studentData.lastName,
         email: studentData.regEmail,
-        linkedin : studentData.linkedin,
-        mobile : studentData.mobile,
-        rollNumber : studentData.rollNumber,
-        branch: studentData.branch,
-        batch: studentData.batch,
-        cgpa : studentData.cgpa,
-        resume: studentData.resume ? studentData.resume.url : null,
-        mobile: studentData.mobile,
         linkedin: studentData.linkedin,
-        cgpa: studentData.cgpa,
-        batch: studentData.batch,
+        mobile: studentData.mobile,
+        rollNumber: studentData.rollNumber,
         branch: studentData.branch,
+        batch: studentData.batch,
+        cgpa: studentData.cgpa,
+        resume: studentData.resume ? studentData.resume.url : null,
       },
     });
   } catch (error) {
@@ -43,7 +42,11 @@ export const getDashboard = async (req: AuthenticatedRequest, res: Response, nex
   }
 };
 
-export const updateDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const updateDashboard = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const studentId = (req as any).user?.id;
     if (!studentId) {
@@ -63,7 +66,9 @@ export const updateDashboard = async (req: Request, res: Response, next: NextFun
     const studentRef = doc(db, "students", studentId);
     await updateDoc(studentRef, updates);
 
-    res.status(200).json({ success: true, message: "Dashboard updated successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Dashboard updated successfully" });
   } catch (error) {
     next(error);
   }
