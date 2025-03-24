@@ -19,12 +19,12 @@ import { AuthenticatedRequest } from "../../types/express";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 
-interface JobData {
-  job_type: string;
-  applications?: any[];
-  form?: any;
-  [key: string]: any;
-}
+// interface JobData {
+//   job_type: string;
+//   applications?: any[];
+//   form?: any;
+//   [key: string]: any;
+// }
 
 interface ResponseJob {
   id: string;
@@ -32,18 +32,18 @@ interface ResponseJob {
   [key: string]: any;
 }
 
-interface FormField {
-  [key: string]: string; // e.g., { "Experiences": "number", "interns": "string" }
-}
+// interface FormField {
+//   [key: string]: string; // e.g., { "Experiences": "number", "interns": "string" }
+// }
 
-interface JobApplicationForm {
-  studentName: string;
-  email: string;
-  contactNumber: string;
-  cgpa: number;
-  resumeUrl: string;
-  [key: string]: any; // For dynamic form fields like Experiences, interns, etc.
-}
+// interface JobApplicationForm {
+//   studentName: string;
+//   email: string;
+//   contactNumber: string;
+//   cgpa: number;
+//   resumeUrl: string;
+//   [key: string]: any; // For dynamic form fields like Experiences, interns, etc.
+// }
 // GET /jobs?query={job_type}
 export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -188,18 +188,38 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
 }
 
 // POST /jobs/:id/apply
+
+interface JobData {
+  job_type: string;
+  applications?: any[];
+  form?: any;
+  [key: string]: any;
+}
+
+interface FormField {
+  [key: string]: string; // e.g., { "Experiences": "number", "interns": "string" }
+}
+
+interface JobApplicationForm {
+  studentName: string;
+  email: string;
+  contactNumber: string;
+  cgpa: number;
+  resumeUrl: string;
+  [key: string]: any; // For dynamic form fields
+}
+
+// POST /jobs/student/:id/apply
 export const applyJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const jobId = req.params.id;
-    const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
-    const querySnapshot = await getDocs(jobsQuery);
+    const jobRef = doc(db, "jobs", jobId);
+    const jobDoc = await getDoc(jobRef);
 
-    if (querySnapshot.empty) {
+    if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
     }
 
-    const jobDoc = querySnapshot.docs[0];
-    const jobDocRef = jobDoc.ref;
     const jobData = jobDoc.data();
 
     // Check if job is expired
@@ -223,10 +243,10 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       }
     }
 
-    // Parse the job's form field (it's a JSON string)
-    let jobForm: FormField;
+    // Parse the job's form field (it's an array of objects)
+    let jobForm: { label: string; type: string }[];
     try {
-      jobForm = JSON.parse(jobData.form);
+      jobForm = jobData.form || []; // Default to empty array if undefined
     } catch (err) {
       throw new BadRequestError("Invalid form structure in job data");
     }
@@ -246,7 +266,14 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     }
 
     // Validate that all required form fields are provided
-    for (const [fieldName, fieldType] of Object.entries(jobForm)) {
+    const formFieldMap: FormField = {};
+    jobForm.forEach((field: { label?: string; type: string }) => {
+      if (field.label) { // Only add fields with a defined label
+        formFieldMap[field.label] = field.type;
+      }
+    });
+
+    for (const [fieldName, fieldType] of Object.entries(formFieldMap)) {
       if (!(fieldName in jobApplicationForm)) {
         throw new BadRequestError(`Missing required field: ${fieldName}`);
       }
@@ -256,8 +283,10 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       if (fieldType === "number" && typeof value !== "number") {
         throw new BadRequestError(`${fieldName} must be a number`);
       }
-      if (fieldType === "string" && typeof value !== "string") {
-        throw new BadRequestError(`${fieldName} must be a string`);
+      if (fieldType === "string" || fieldType === "text" || fieldType === "textarea" || fieldType === "file") {
+        if (typeof value !== "string") {
+          throw new BadRequestError(`${fieldName} must be a string`);
+        }
       }
     }
 
@@ -282,15 +311,21 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       };
     }
 
+    // Filter out empty keys from jobApplicationForm
+    const sanitizedForm = Object.fromEntries(
+      Object.entries(jobApplicationForm).filter(([key]) => key !== "" && key !== undefined)
+    );
+
     // Create application object
     const applicationId = uuidv4();
+    const createdAt = new Date(); // Use client-side timestamp
 
     // Create application document to store in jobApplications collection
     const jobApplication = {
       id: applicationId,
       jobId: jobId,
       studentId: student.id,
-      form: jobApplicationForm,
+      form: sanitizedForm, // Use sanitized form without empty keys
       createdAt: serverTimestamp(),
       status: "Pending",
     };
@@ -299,12 +334,12 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     await addDoc(collection(db, "jobApplications"), jobApplication);
 
     // Update the job's application count and add to applications array
-    await updateDoc(jobDocRef, {
-      applicantsNo: increment(1), // Update applicantsNo instead of applicationCount
+    await updateDoc(jobRef, {
+      applicantsNo: increment(1),
       applications: arrayUnion({
         id: applicationId,
         student: student.id,
-        createdAt: serverTimestamp(),
+        createdAt: createdAt.toISOString(),
       }),
     });
 
@@ -318,5 +353,4 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     next(error);
   }
 };
-
 
