@@ -37,7 +37,7 @@ router.post(
   ],
   checkAuth,
   validateRequest,
-  
+
 );
 
 // GET /jobs
@@ -80,18 +80,7 @@ router.post(
     body("form")
       .exists()
       .withMessage("Application form is required")
-      .custom((form) => {
-        if (typeof form === "object") return true;
-        if (typeof form === "string") {
-          try {
-            JSON.parse(form);
-            return true;
-          } catch (err) {
-            throw new Error("Application form must be valid JSON");
-          }
-        }
-        return false;
-      }),
+      .isString(),
   ],
   checkAuth,
   validateRequest,
