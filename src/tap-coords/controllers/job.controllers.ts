@@ -108,7 +108,7 @@ export const getAllJobs: RequestHandler = async (req: AuthenticatedRequest, res:
           title: jobData.title,
           company,
           location: jobData.location,
-          jobType: jobData.jobType || "Full-Time",
+          jobType: jobData.jobType ,
           package: jobData.package,
           createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
           status: jobData.status,
@@ -248,6 +248,7 @@ export const deleteJob: RequestHandler = async (req: AuthenticatedRequest, res: 
 
 export const getAllApplications: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    console.log("in getallapplications ")
     if (req.user?.role !== "tap") {
       res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
       return;
@@ -401,6 +402,7 @@ export const verifyJob: RequestHandler = async (req: AuthenticatedRequest, res: 
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
 
+    
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
     }

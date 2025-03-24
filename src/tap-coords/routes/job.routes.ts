@@ -41,12 +41,18 @@ router.get(
     validateRequest,
     getAllJobs
 );
+router.get(
+    "/applications",
+    checkTapAuth,
+    validateRequest,
+    getAllApplications
+);
+
 
 // Get job by ID
 router.get(
     "/:id",
     checkTapAuth,
- 
     validateRequest,
     getJobById
 );
@@ -107,10 +113,10 @@ router.delete(
     deleteJob
 );
 
-router.get("/applications",
-    // validateRequest,
-    // checkTapAuth,
-    getAllApplications
-);
+// router.get("/applications",
+//     validateRequest,
+//     checkTapAuth,
+//     getAllJobs
+// );
 
 export { router as tapJobRouter };

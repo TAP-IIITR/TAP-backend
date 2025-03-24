@@ -13,7 +13,7 @@ if(!SERVER_CONFIG.JWT_EXPIRES_IN){
 }
 export const generateJWT = (payload: JWTPayload): string => {
   return jwt.sign(payload, String(SERVER_CONFIG.JWT_SECRET ), {
-    expiresIn: "24h"
+    expiresIn:  7 * 24 * 60 * 60 * 1000
   });
 };
 

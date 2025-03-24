@@ -10,12 +10,14 @@ import {
   serverTimestamp,
   getDoc,
   doc,
-  increment
+  increment,
+  Timestamp
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../../types/express";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
+import { NotFoundError } from "../../errors/Not-Found-Error";
 
 // GET /jobs?query={job_type}
 export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -54,86 +56,50 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
     next(error);
   }
 };
-
+const getRecruiterCompanyName = async (recruiterId: string): Promise<string> => {
+  const recruiterRef = doc(db, "recruiters", recruiterId);
+  const recruiterDoc = await getDoc(recruiterRef);
+  return recruiterDoc.exists() ? recruiterDoc.data().companyName || "Unknown Company" : "Unknown Company";
+};
 // GET /jobs/:id
 // GET /jobs/:id - Modified version
 export const getJob = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const jobId = req.params.id;
-    const jobsQuery = q(collection(db, "jobs"), where("job_id", "==", jobId));
-    const querySnapshot = await getDocs(jobsQuery);
     
-    if (querySnapshot.empty) {
-      res.status(404).json({ success: false, message: "Job not found" });
-      return;
-    }
+        const jobId = req.params.id;
+        const jobRef = doc(db, "jobs", jobId);
+        const jobDoc = await getDoc(jobRef);
     
-    const jobDoc = querySnapshot.docs[0];
-    if (!jobDoc.exists()) {
-      res.status(404).json({ success: false, message: "Job not found" });
-      return;
-    }
-    
-    const jobData = jobDoc.data() as any;
-    
-    // Check if job is expired
-    const deadline = jobData.deadline?.toDate() || new Date(jobData.deadline);
-    const now = new Date();
-    if (deadline < now) {
-      res.status(400).json({ success: false, message: "This job posting has expired" });
-      return;
-    }
-    
-    // Get form without applications
-    const { applications, ...jobInfo } = jobData;
-    let formWithStudentInfo = jobInfo.form || {};
-
-    // Get student info and add to form if student is authenticated
-    const student = (req as AuthenticatedRequest).user;
-    if (student) {
-      // Check if student has already applied
-      if (jobData.applications) {
-        const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
-        if (hasApplied) {
-          res.status(400).json({ success: false, message: "You have already applied for this job" });
-          return;
+        if (!jobDoc.exists()) {
+          throw new NotFoundError("Job not found");
         }
-      }
-      
-      // Get student details to pre-fill the form
-      try {
-        const studentRef = doc(db, "students", student.id);
-        const studentDoc = await getDoc(studentRef);
-        
-        if (studentDoc.exists()) {
-          const studentData = studentDoc.data();
-          
-          // Add student info to the form
-          formWithStudentInfo = {
-            ...formWithStudentInfo,
-            studentName: `${studentData.firstName} ${studentData.lastName}`,
-            contactNumber: studentData.mobile || "Not provided",
-            email: studentData.regEmail,
-            cgpa: studentData.cgpa || 0,
-            resumeUrl: studentData.resume ? studentData.resume.url : "Not provided"
-          };
-        }
-      } catch (err) {
-        console.error("Error fetching student data for form:", err);
-        // Continue without student data if there's an error
-      }
-    }
     
-    res.status(200).json({
-      statusCode: 200,
-      message: "Job fetched",
-      job: { 
-        id: jobDoc.id, 
-        ...jobInfo,
-        form: formWithStudentInfo, // Send the form with student info
-        applicationCount: applications ? applications.length : 0
-      }
-    });
+        const jobData = jobDoc.data();
+        let company = jobData.company || "Unknown Company";
+        if (jobData.recruiter) {
+          company = await getRecruiterCompanyName(jobData.recruiter);
+        }
+    
+        res.status(200).json({
+          success: true,
+          message: "Job retrieved successfully",
+          data: {
+            id: jobDoc.id,
+            title: jobData.title,
+            JD: jobData.JD,
+            location: jobData.location,
+            jobType: jobData.jobType || "Full-Time",
+            package: jobData.package,
+            eligibility: jobData.eligibility,
+            skills: jobData.skills,
+            deadline: jobData.deadline,
+            form: jobData.form,
+            company,
+            status: jobData.status,
+            applications: jobData.applications || [],
+            createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
+          },
+        });
   } catch (error) {
     next(error);
   }
