@@ -3,6 +3,8 @@ import {
   getJobs,
   getJob,
   applyJob,
+  getMyApplications,
+  getapp,
 } from "../controllers/job.controllers";
 import { body, param, query } from "express-validator";
 import { checkAuth } from "../../middleware/auth.middleware";
@@ -63,7 +65,8 @@ router.get(
 );
 
 // GET /jobs/:id
-
+router.get("/mm",checkAuth,
+  validateRequest,getMyApplications)
 router.get(
   "/:id",
   checkAuth,
