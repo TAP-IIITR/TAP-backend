@@ -75,13 +75,6 @@ router.get(
 
 router.post(
   "/:id/apply",
-  [
-    param("id").exists().withMessage("Job ID is required"),
-    body("form")
-      .exists()
-      .withMessage("Application form is required")
-      .isString(),
-  ],
   checkAuth,
   validateRequest,
   applyJob
