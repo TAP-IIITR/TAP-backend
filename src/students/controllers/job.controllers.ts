@@ -209,6 +209,77 @@ interface JobApplicationForm {
   [key: string]: any; // For dynamic form fields
 }
 
+export const getapp = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+
+ res.status(400).json({
+  hi : "Hi"
+})
+}
+export const getMyApplications = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  console.log("HREe is func to get all my appplications")
+  try {
+    const student = req.user;
+    console.log(student,"is our student")
+    if (!student) {
+      throw new BadRequestError("Unauthorized");
+    }
+    console.log("student is ",student)
+
+    // Query jobApplications collection for the student's applications    
+    const applicationsQuery = q(
+      collection(db, "jobApplications"),
+      where("studentId", "==", student.id)
+    );
+    const querySnapshot = await getDocs(applicationsQuery);
+
+    // Fetch job details for each application
+    const applications = await Promise.all(
+      querySnapshot.docs.map(async (docSnapshot) => {
+        const appData = docSnapshot.data();
+        const jobRef = doc(db, "jobs", appData.jobId);
+        const jobDoc = await getDoc(jobRef);
+
+        let jobInfo = {};
+        if (jobDoc.exists()) {
+          const jobData = jobDoc.data();
+          let company = jobData.company || "Unknown Company";
+          if (jobData.recruiter) {
+            company = await getRecruiterCompanyName(jobData.recruiter);
+          }
+          jobInfo = {
+            id: jobDoc.id,
+            title: jobData.title,
+            company,
+            jobType: jobData.jobType || "Full-Time",
+            deadline: jobData.deadline,
+            status: jobData.status,
+          };
+        } else {
+          jobInfo = { id: appData.jobId, title: "Job Not Found" };
+        }
+
+        return {
+          applicationId: appData.id,
+          job: jobInfo,
+          form: appData.form,
+          status: appData.status,
+          createdAt: (appData.createdAt as Timestamp)?.toDate().toISOString(),
+        };
+      })
+    );
+
+    res.status(200).json({
+      statusCode: 200,
+      message: "Applications retrieved successfully",
+      applications,
+    });
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    next(error);
+  }
+};
+
+
 // POST /jobs/student/:id/apply
 export const applyJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
