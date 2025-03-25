@@ -212,6 +212,7 @@ interface JobApplicationForm {
 // POST /jobs/student/:id/apply
 export const applyJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE")
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
