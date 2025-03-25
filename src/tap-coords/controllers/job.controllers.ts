@@ -321,6 +321,11 @@ export const getAllApplications: RequestHandler = async (req: AuthenticatedReque
                 name: `${studentData.firstName} ${studentData.lastName}`,
                 email: studentData.regEmail,
                 cgpa: studentData.cgpa || "N/A",
+                mobile: studentData.mobile,
+                branch : studentData.branch,
+                linkedin: studentData.linkedin,
+                batch: studentData.batch,
+                rollNumber : studentData.rollNumber
               }
             : "Student not found",
         };
