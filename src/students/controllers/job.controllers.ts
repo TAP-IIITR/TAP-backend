@@ -62,14 +62,14 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
       case 'fte':
       case 'intern_fte':
         jobsQuery = q(
-          collection(db, 'jobs'), 
+          collection(db, 'jobs'),
           where('job_type', '==', queryRaw)
         );
         break;
       default:
-        res.status(400).json({ 
-          success: false, 
-          message: 'Invalid job type' 
+        res.status(400).json({
+          success: false,
+          message: 'Invalid job type'
         });
         return;
     }
@@ -82,12 +82,14 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
       const jobData = docSnapshot.data() as JobData;
       const { applications, form, ...jobInfo } = jobData;
 
-      return { 
+      return {
         ...jobInfo, // Spread other job info
         id: docSnapshot.id, // Explicitly use Firestore document ID
         applicationCount: applications?.length || 0
       };
     });
+
+    jobsData.sort((a, b) => b.createdAt - a.createdAt)
 
     // Send response
     res.status(200).json({
@@ -101,7 +103,7 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
   }
 };
 
-  const getRecruiterCompanyName = async (recruiterId: string): Promise<string> => {
+const getRecruiterCompanyName = async (recruiterId: string): Promise<string> => {
   const recruiterRef = doc(db, "recruiters", recruiterId);
   const recruiterDoc = await getDoc(recruiterRef);
   return recruiterDoc.exists() ? recruiterDoc.data().companyName || "Unknown Company" : "Unknown Company";
@@ -169,15 +171,15 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
         student: studentData
           ? {
-              id: student.id,
-              firstName: studentData.firstName,
-              lastName: studentData.lastName,
-              regEmail: studentData.regEmail,
-              mobile: studentData.mobile,
-              cgpa: studentData.cgpa,
-              resume: studentData.resume,
-              branch: studentData.branch,
-            }
+            id: student.id,
+            firstName: studentData.firstName,
+            lastName: studentData.lastName,
+            regEmail: studentData.regEmail,
+            mobile: studentData.mobile,
+            cgpa: studentData.cgpa,
+            resume: studentData.resume,
+            branch: studentData.branch,
+          }
           : null,
         hasApplied,
       },
@@ -211,19 +213,19 @@ interface JobApplicationForm {
 
 export const getapp = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
- res.status(400).json({
-  hi : "Hi"
-})
+  res.status(400).json({
+    hi: "Hi"
+  })
 }
 export const getMyApplications = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   console.log("HREe is func to get all my appplications")
   try {
     const student = req.user;
-    console.log(student,"is our student")
+    console.log(student, "is our student")
     if (!student) {
       throw new BadRequestError("Unauthorized");
     }
-    console.log("student is ",student)
+    console.log("student is ", student)
 
     // Query jobApplications collection for the student's applications    
     const applicationsQuery = q(
