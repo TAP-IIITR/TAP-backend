@@ -39,7 +39,8 @@ export class S3ResumeRepository implements IResumeRepository {
       const putObjectCommand = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
-        ContentType: fileType //ACL is set to PUBLIC by default
+        ContentType: fileType,
+        ACL: 'public-read'
       });
 
       // Generate signed URL with specific options
