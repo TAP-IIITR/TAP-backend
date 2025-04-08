@@ -9,9 +9,7 @@ const router = Router();
 router.post(
   '/upload-url',
   checkAuth,
-  [
-    body('fileType')
-  ],
+
   validateRequest,
   uploadResume
 );
