@@ -20,7 +20,12 @@ export const getDashboard = async (
       res.status(404).json({ success: false, message: "Student not found" });
       return;
     }
-    const studentData = studentSnap.data();
+    const studentData = studentSnap.data()
+
+    const cgpaRef = doc(db, "CGPA", studentId.toUpperCase());
+    const cgpaSnap = await getDoc(cgpaRef);
+    const cgpaData = cgpaSnap.data()
+
     res.status(200).json({
       status: 200,
       message: "Student info sent",
@@ -33,7 +38,7 @@ export const getDashboard = async (
         rollNumber: studentData.rollNumber,
         branch: studentData.branch,
         batch: studentData.batch,
-        cgpa: studentData.cgpa,
+        cgpa: cgpaData?.cgpa,
         resume: studentData.resume ? studentData.resume.url : null,
       },
     });
