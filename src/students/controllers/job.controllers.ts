@@ -116,6 +116,7 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
 
+
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
     }
@@ -128,6 +129,7 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
 
     // Get student details if authenticated
     let studentData = null;
+    let cgpaData = null;
     let hasApplied = false;
     const student = req.user;
 
@@ -140,6 +142,13 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
       }
 
       studentData = studentDoc.data();
+
+      const cgpaRef = doc(db, "CGPA", studentData.id.toUpperCase());
+      const cgpaSnap = await getDoc(cgpaRef);
+
+
+      cgpaData = cgpaSnap.data()
+
 
       // Check if the student has already applied
       if (jobData.applications) {
@@ -176,7 +185,7 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
             lastName: studentData.lastName,
             regEmail: studentData.regEmail,
             mobile: studentData.mobile,
-            cgpa: studentData.cgpa,
+            cgpa: cgpaData?.cgpa,
             resume: studentData.resume,
             branch: studentData.branch,
           }

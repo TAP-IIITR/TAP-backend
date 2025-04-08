@@ -22,7 +22,7 @@ router.post(
     body("location").exists().withMessage("Location is required").isString(),
     body("salaryPackage")
       .exists()
-      .withMessage("Salary package is required")  
+      .withMessage("Salary package is required")
       .isString(),
     body("eligibility")
       .exists()
@@ -65,8 +65,8 @@ router.get(
 );
 
 // GET /jobs/:id
-router.get("/mm",checkAuth,
-  validateRequest,getMyApplications)
+router.get("/mm", checkAuth,
+  validateRequest, getMyApplications)
 router.get(
   "/:id",
   checkAuth,
