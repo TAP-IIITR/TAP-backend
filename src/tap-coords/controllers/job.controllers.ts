@@ -20,17 +20,51 @@ import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
 
-export const createJob: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const createJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
-    const { title, JD, location, package: salaryPackage, eligibility, skills, deadline, form, company, jobType, recruiter } = req.body;
+    const {
+      title,
+      JD,
+      location,
+      package: salaryPackage,
+      eligibility,
+      eligibleBatches,
+      deadline,
+      form,
+      company,
+      jobType,
+      recruiter,
+    } = req.body;
 
-    if (!title || !JD || !location || !salaryPackage || !eligibility || !skills || !deadline || !form || !company || !jobType) {
-      throw new BadRequestError("Missing required fields: title, JD, location, package, eligibility, skills, deadline, form, company, and jobType are required");
+    if (
+      !title ||
+      !JD ||
+      !location ||
+      !salaryPackage ||
+      !eligibility ||
+      !eligibleBatches ||
+      !deadline ||
+      !form ||
+      !company ||
+      !jobType
+    ) {
+      throw new BadRequestError(
+        "Missing required fields: title, JD, location, package, eligibility, eligibleBatches, deadline, form, company, and jobType are required"
+      );
     }
 
     let recruiterId = null;
@@ -51,7 +85,7 @@ export const createJob: RequestHandler = async (req: AuthenticatedRequest, res: 
       location,
       package: salaryPackage,
       eligibility,
-      skills,
+      eligibleBatches,
       deadline: new Date(deadline).toISOString(),
       form,
       company,
@@ -76,19 +110,33 @@ export const createJob: RequestHandler = async (req: AuthenticatedRequest, res: 
   }
 };
 
-export const getAllJobs: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getAllJobs: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
     const search = req.query.search as string | undefined;
     const sortBy = req.query.sortBy as string | undefined;
     const sortOrder = req.query.sortOrder as "asc" | "desc" | undefined;
 
-    let jobsQuery = query(collection(db, "jobs"), where("createdBy", "==", req.user.id));
+    let jobsQuery = query(
+      collection(db, "jobs"),
+      where("createdBy", "==", req.user.id)
+    );
     if (sortBy) {
       const field = sortBy === "postedTime" ? "createdAt" : "package";
       jobsQuery = query(jobsQuery, orderBy(field, sortOrder || "desc"));
@@ -108,7 +156,7 @@ export const getAllJobs: RequestHandler = async (req: AuthenticatedRequest, res:
           title: jobData.title,
           company,
           location: jobData.location,
-          jobType: jobData.jobType ,
+          jobType: jobData.jobType,
           package: jobData.package,
           createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
           status: jobData.status,
@@ -140,10 +188,19 @@ export const getAllJobs: RequestHandler = async (req: AuthenticatedRequest, res:
   }
 };
 
-export const getJobById: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getJobById: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
@@ -172,7 +229,7 @@ export const getJobById: RequestHandler = async (req: AuthenticatedRequest, res:
         jobType: jobData.jobType || "Full-Time",
         package: jobData.package,
         eligibility: jobData.eligibility,
-        skills: jobData.skills,
+        eligibleBatches: jobData.eligibleBatches,
         deadline: jobData.deadline,
         form: jobData.form,
         company,
@@ -186,10 +243,19 @@ export const getJobById: RequestHandler = async (req: AuthenticatedRequest, res:
   }
 };
 
-export const updateJob: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const updateJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
@@ -217,10 +283,19 @@ export const updateJob: RequestHandler = async (req: AuthenticatedRequest, res: 
   }
 };
 
-export const deleteJob: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const deleteJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
@@ -246,18 +321,32 @@ export const deleteJob: RequestHandler = async (req: AuthenticatedRequest, res: 
   }
 };
 
-export const getAllApplications: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getAllApplications: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    console.log("in getallapplications ")
+    console.log("in getallapplications ");
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
     const jobId = req.query.job as string;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
 
-    let jobsQuery = query(collection(db, "jobs"), where("createdBy", "==", req.user.id));
+    let jobsQuery = query(
+      collection(db, "jobs"),
+      where("createdBy", "==", req.user.id)
+    );
     if (jobId) {
       jobsQuery = query(jobsQuery, where("id", "==", jobId));
     }
@@ -322,10 +411,10 @@ export const getAllApplications: RequestHandler = async (req: AuthenticatedReque
                 email: studentData.regEmail,
                 cgpa: studentData.cgpa || "N/A",
                 mobile: studentData.mobile,
-                branch : studentData.branch,
+                branch: studentData.branch,
                 linkedin: studentData.linkedin,
                 batch: studentData.batch,
-                rollNumber : studentData.rollNumber
+                rollNumber: studentData.rollNumber,
               }
             : "Student not found",
         };
@@ -342,39 +431,60 @@ export const getAllApplications: RequestHandler = async (req: AuthenticatedReque
   }
 };
 
-export const getPendingVerifications: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const getPendingVerifications: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
     const jobsRef = collection(db, "jobs");
-    const q = query(jobsRef, where("status", "==", "pending_verification"), where("createdBy", "==", req.user.id));
+    const q = query(
+      jobsRef,
+      where("status", "==", "pending_verification"),
+      where("createdBy", "==", req.user.id)
+    );
     const jobsSnap = await getDocs(q);
 
     const pendingJobs = await Promise.all(
-      jobsSnap.docs.map(async (docSnapshot: QueryDocumentSnapshot<DocumentData>) => {
-        const jobData = docSnapshot.data();
-        let company = jobData.company || "Unknown";
-        if (jobData.recruiter) {
-          const recruiterRef = doc(db, "recruiters", jobData.recruiter as string);
-          const recruiterDoc = await getDoc(recruiterRef);
-          const recruiterData = recruiterDoc.exists() ? recruiterDoc.data() : null;
-          company = recruiterData?.companyName || company;
-        }
+      jobsSnap.docs.map(
+        async (docSnapshot: QueryDocumentSnapshot<DocumentData>) => {
+          const jobData = docSnapshot.data();
+          let company = jobData.company || "Unknown";
+          if (jobData.recruiter) {
+            const recruiterRef = doc(
+              db,
+              "recruiters",
+              jobData.recruiter as string
+            );
+            const recruiterDoc = await getDoc(recruiterRef);
+            const recruiterData = recruiterDoc.exists()
+              ? recruiterDoc.data()
+              : null;
+            company = recruiterData?.companyName || company;
+          }
 
-        return {
-          id: docSnapshot.id,
-          title: jobData.title,
-          company,
-          location: jobData.location,
-          jobType: jobData.jobType || "Full-Time",
-          package: jobData.package,
-          createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
-          status: jobData.status,
-        };
-      })
+          return {
+            id: docSnapshot.id,
+            title: jobData.title,
+            company,
+            location: jobData.location,
+            jobType: jobData.jobType || "Full-Time",
+            package: jobData.package,
+            createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
+            status: jobData.status,
+          };
+        }
+      )
     );
 
     res.status(200).json({
@@ -387,10 +497,19 @@ export const getPendingVerifications: RequestHandler = async (req: Authenticated
   }
 };
 
-export const verifyJob: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const verifyJob: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
@@ -401,13 +520,14 @@ export const verifyJob: RequestHandler = async (req: AuthenticatedRequest, res: 
       throw new BadRequestError("Invalid job ID");
     }
     if (!action || !["approve", "reject"].includes(action)) {
-      throw new BadRequestError("Invalid action. Must be 'approve' or 'reject'");
+      throw new BadRequestError(
+        "Invalid action. Must be 'approve' or 'reject'"
+      );
     }
 
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
 
-    
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
     }
@@ -432,10 +552,19 @@ export const verifyJob: RequestHandler = async (req: AuthenticatedRequest, res: 
   }
 };
 
-export const updateApplicationStatus: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const updateApplicationStatus: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Access forbidden. TAP Coordinator access required.",
+        });
       return;
     }
 
@@ -449,8 +578,13 @@ export const updateApplicationStatus: RequestHandler = async (req: Authenticated
     if (!studentId || typeof studentId !== "string") {
       throw new BadRequestError("Invalid student ID");
     }
-    if (!status || !["selected", "rejected", "under_review", "pending"].includes(status)) {
-      throw new BadRequestError("Invalid status. Must be 'selected', 'rejected', 'under_review', or 'pending'");
+    if (
+      !status ||
+      !["selected", "rejected", "under_review", "pending"].includes(status)
+    ) {
+      throw new BadRequestError(
+        "Invalid status. Must be 'selected', 'rejected', 'under_review', or 'pending'"
+      );
     }
 
     const jobRef = doc(db, "jobs", jobId);
@@ -462,7 +596,9 @@ export const updateApplicationStatus: RequestHandler = async (req: Authenticated
 
     const jobData = jobDoc.data();
     const applications = jobData.applications || [];
-    const applicationIndex = applications.findIndex((app: any) => app.student === studentId);
+    const applicationIndex = applications.findIndex(
+      (app: any) => app.student === studentId
+    );
 
     if (applicationIndex === -1) {
       throw new NotFoundError("Application not found");
@@ -492,8 +628,12 @@ export const updateApplicationStatus: RequestHandler = async (req: Authenticated
   }
 };
 
-const getRecruiterCompanyName = async (recruiterId: string): Promise<string> => {
+const getRecruiterCompanyName = async (
+  recruiterId: string
+): Promise<string> => {
   const recruiterRef = doc(db, "recruiters", recruiterId);
   const recruiterDoc = await getDoc(recruiterRef);
-  return recruiterDoc.exists() ? recruiterDoc.data().companyName || "Unknown Company" : "Unknown Company";
+  return recruiterDoc.exists()
+    ? recruiterDoc.data().companyName || "Unknown Company"
+    : "Unknown Company";
 };

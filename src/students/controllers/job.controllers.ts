@@ -11,7 +11,7 @@ import {
   getDoc,
   doc,
   increment,
-  Timestamp
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { v4 as uuidv4 } from "uuid";
@@ -45,31 +45,37 @@ interface ResponseJob {
 //   [key: string]: any; // For dynamic form fields like Experiences, interns, etc.
 // }
 // GET /jobs?query={job_type}
-export const getJobs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getJobs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     // Validate and process query parameter
-    const queryRaw = req.query.query ? req.query.query.toString().toLowerCase() : 'all';
+    const queryRaw = req.query.query
+      ? req.query.query.toString().toLowerCase()
+      : "all";
 
     // Define job query based on query parameter
     let jobsQuery;
-    const validJobTypes = ['intern', 'fte', 'intern_fte'];
+    const validJobTypes = ["intern", "fte", "intern_fte"];
 
     switch (queryRaw) {
-      case 'all':
-        jobsQuery = q(collection(db, 'jobs'));
+      case "all":
+        jobsQuery = q(collection(db, "jobs"));
         break;
-      case 'intern':
-      case 'fte':
-      case 'intern_fte':
+      case "intern":
+      case "fte":
+      case "intern_fte":
         jobsQuery = q(
-          collection(db, 'jobs'),
-          where('job_type', '==', queryRaw)
+          collection(db, "jobs"),
+          where("job_type", "==", queryRaw)
         );
         break;
       default:
         res.status(400).json({
           success: false,
-          message: 'Invalid job type'
+          message: "Invalid job type",
         });
         return;
     }
@@ -85,37 +91,43 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction): 
       return {
         ...jobInfo, // Spread other job info
         id: docSnapshot.id, // Explicitly use Firestore document ID
-        applicationCount: applications?.length || 0
+        applicationCount: applications?.length || 0,
       };
     });
 
-    jobsData.sort((a, b) => b.createdAt - a.createdAt)
+    jobsData.sort((a, b) => b.createdAt - a.createdAt);
 
     // Send response
     res.status(200).json({
       statusCode: 200,
-      message: 'Jobs fetched',
-      jobs: jobsData
+      message: "Jobs fetched",
+      jobs: jobsData,
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-const getRecruiterCompanyName = async (recruiterId: string): Promise<string> => {
+const getRecruiterCompanyName = async (
+  recruiterId: string
+): Promise<string> => {
   const recruiterRef = doc(db, "recruiters", recruiterId);
   const recruiterDoc = await getDoc(recruiterRef);
-  return recruiterDoc.exists() ? recruiterDoc.data().companyName || "Unknown Company" : "Unknown Company";
+  return recruiterDoc.exists()
+    ? recruiterDoc.data().companyName || "Unknown Company"
+    : "Unknown Company";
 };
 // GET /jobs/:id
 // GET /jobs/:id - Modified version
-export const getJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getJob = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
-
 
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
@@ -146,18 +158,16 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
       const cgpaRef = doc(db, "CGPA", studentData.id.toUpperCase());
       const cgpaSnap = await getDoc(cgpaRef);
 
-
-      cgpaData = cgpaSnap.data()
-
+      cgpaData = cgpaSnap.data();
 
       // Check if the student has already applied
       if (jobData.applications) {
-        hasApplied = jobData.applications.some((app: any) => app.student === student.id);
+        hasApplied = jobData.applications.some(
+          (app: any) => app.student === student.id
+        );
       }
-    }
-    else {
+    } else {
       throw new NotFoundError("Student record not found");
-
     }
 
     res.status(200).json({
@@ -171,7 +181,7 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
         jobType: jobData.jobType || "Full-Time",
         package: jobData.package,
         eligibility: jobData.eligibility,
-        skills: jobData.skills,
+        eligibleBatches: jobData.eligibleBatches,
         deadline: jobData.deadline,
         form: jobData.form,
         company,
@@ -180,15 +190,15 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
         student: studentData
           ? {
-            id: student.id,
-            firstName: studentData.firstName,
-            lastName: studentData.lastName,
-            regEmail: studentData.regEmail,
-            mobile: studentData.mobile,
-            cgpa: cgpaData?.cgpa,
-            resume: studentData.resume,
-            branch: studentData.branch,
-          }
+              id: student.id,
+              firstName: studentData.firstName,
+              lastName: studentData.lastName,
+              regEmail: studentData.regEmail,
+              mobile: studentData.mobile,
+              cgpa: cgpaData?.cgpa,
+              resume: studentData.resume,
+              branch: studentData.branch,
+            }
           : null,
         hasApplied,
       },
@@ -196,7 +206,7 @@ export const getJob = async (req: AuthenticatedRequest, res: Response, next: Nex
   } catch (error) {
     next(error);
   }
-}
+};
 
 // POST /jobs/:id/apply
 
@@ -220,23 +230,30 @@ interface JobApplicationForm {
   [key: string]: any; // For dynamic form fields
 }
 
-export const getapp = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-
+export const getapp = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   res.status(400).json({
-    hi: "Hi"
-  })
-}
-export const getMyApplications = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  console.log("HREe is func to get all my appplications")
+    hi: "Hi",
+  });
+};
+export const getMyApplications = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  console.log("HREe is func to get all my appplications");
   try {
     const student = req.user;
-    console.log(student, "is our student")
+    console.log(student, "is our student");
     if (!student) {
       throw new BadRequestError("Unauthorized");
     }
-    console.log("student is ", student)
+    console.log("student is ", student);
 
-    // Query jobApplications collection for the student's applications    
+    // Query jobApplications collection for the student's applications
     const applicationsQuery = q(
       collection(db, "jobApplications"),
       where("studentId", "==", student.id)
@@ -290,11 +307,14 @@ export const getMyApplications = async (req: AuthenticatedRequest, res: Response
   }
 };
 
-
 // POST /jobs/student/:id/apply
-export const applyJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const applyJob = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE")
+    console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE");
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
@@ -320,7 +340,9 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
 
     // Check if student has already applied
     if (jobData.applications) {
-      const hasApplied = jobData.applications.some((app: any) => app.student === student.id);
+      const hasApplied = jobData.applications.some(
+        (app: any) => app.student === student.id
+      );
       if (hasApplied) {
         throw new BadRequestError("You have already applied for this job");
       }
@@ -351,7 +373,8 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     // Validate that all required form fields are provided
     const formFieldMap: FormField = {};
     jobForm.forEach((field: { label?: string; type: string }) => {
-      if (field.label) { // Only add fields with a defined label
+      if (field.label) {
+        // Only add fields with a defined label
         formFieldMap[field.label] = field.type;
       }
     });
@@ -366,7 +389,12 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
       if (fieldType === "number" && typeof value !== "number") {
         throw new BadRequestError(`${fieldName} must be a number`);
       }
-      if (fieldType === "string" || fieldType === "text" || fieldType === "textarea" || fieldType === "file") {
+      if (
+        fieldType === "string" ||
+        fieldType === "text" ||
+        fieldType === "textarea" ||
+        fieldType === "file"
+      ) {
         if (typeof value !== "string") {
           throw new BadRequestError(`${fieldName} must be a string`);
         }
@@ -396,7 +424,9 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
 
     // Filter out empty keys from jobApplicationForm
     const sanitizedForm = Object.fromEntries(
-      Object.entries(jobApplicationForm).filter(([key]) => key !== "" && key !== undefined)
+      Object.entries(jobApplicationForm).filter(
+        ([key]) => key !== "" && key !== undefined
+      )
     );
 
     // Create application object
@@ -436,4 +466,3 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response, next: N
     next(error);
   }
 };
-
