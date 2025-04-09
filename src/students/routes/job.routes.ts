@@ -28,7 +28,10 @@ router.post(
       .exists()
       .withMessage("Eligibility is required")
       .isString(),
-    body("skills").exists().withMessage("Skills are required").isArray(),
+    body("eligibleBatches")
+      .exists()
+      .withMessage("eligibleBatches are required")
+      .isArray(),
     body("deadline").exists().withMessage("Deadline is required"),
     body("recruiter").exists().withMessage("Recruiter is required").isString(),
     body("job_type")
@@ -38,8 +41,7 @@ router.post(
       .withMessage("job_type must be one of intern, fte, intern_fte"),
   ],
   checkAuth,
-  validateRequest,
-
+  validateRequest
 );
 
 // GET /jobs
@@ -65,22 +67,11 @@ router.get(
 );
 
 // GET /jobs/:id
-router.get("/mm", checkAuth,
-  validateRequest, getMyApplications)
-router.get(
-  "/:id",
-  checkAuth,
-  validateRequest,
-  getJob
-);
+router.get("/mm", checkAuth, validateRequest, getMyApplications);
+router.get("/:id", checkAuth, validateRequest, getJob);
 
 // POST /jobs/:id/apply
 
-router.post(
-  "/:id/apply",
-  checkAuth,
-  validateRequest,
-  applyJob
-);
+router.post("/:id/apply", checkAuth, validateRequest, applyJob);
 
 export { router as jobRouter };
