@@ -417,7 +417,7 @@ export const applyJob = async (
         studentName: `${studentData.firstName} ${studentData.lastName}`,
         contactNumber: studentData.mobile || "Not provided",
         email: studentData.regEmail,
-        cgpa: studentData.cgpa || 0,
+        // cgpa: studentData.cgpa || 0,
         resumeUrl: studentData.resume ? studentData.resume.url : "Not provided",
       };
     }
