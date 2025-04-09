@@ -317,7 +317,9 @@ export const applyJob = async (
     console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE");
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
+    // console.log(jobRef);
     const jobDoc = await getDoc(jobRef);
+    // console.log(jobDoc, "is the job doc");
 
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
@@ -361,7 +363,7 @@ export const applyJob = async (
     if (!jobApplicationForm) {
       throw new BadRequestError("Application form is required");
     }
-
+    console.log(jobApplicationForm, "is the job application form");
     if (typeof jobApplicationForm === "string") {
       try {
         jobApplicationForm = JSON.parse(jobApplicationForm);
@@ -417,7 +419,7 @@ export const applyJob = async (
         studentName: `${studentData.firstName} ${studentData.lastName}`,
         contactNumber: studentData.mobile || "Not provided",
         email: studentData.regEmail,
-        cgpa: studentData.cgpa || 0,
+        // cgpa: studentData.cgpa || 0,
         resumeUrl: studentData.resume ? studentData.resume.url : "Not provided",
       };
     }
