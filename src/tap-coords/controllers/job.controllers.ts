@@ -27,12 +27,10 @@ export const createJob: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -117,12 +115,10 @@ export const getAllJobs: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -160,6 +156,7 @@ export const getAllJobs: RequestHandler = async (
           package: jobData.package,
           createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
           status: jobData.status,
+          deadline: jobData.deadline,
           applications: jobData.applications || [],
         };
       })
@@ -195,12 +192,10 @@ export const getJobById: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -264,12 +259,10 @@ export const updateJob: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -304,12 +297,10 @@ export const deleteJob: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -343,12 +334,10 @@ export const getAllApplications: RequestHandler = async (
   try {
     console.log("in getallapplications ");
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -357,39 +346,27 @@ export const getAllApplications: RequestHandler = async (
       ? parseInt(req.query.limit as string)
       : undefined;
 
-    let jobsQuery = query(
-      collection(db, "jobs"),
-      where("createdBy", "==", req.user.id)
-    );
+    let jobApplicationsQuery = query(collection(db, "jobApplications"));
     if (jobId) {
-      jobsQuery = query(jobsQuery, where("id", "==", jobId));
+      jobApplicationsQuery = query(
+        jobApplicationsQuery,
+        where("id", "==", jobId)
+      );
     }
 
-    const jobsSnap = await getDocs(jobsQuery);
+    const jobApplicationsSnap = await getDocs(jobApplicationsQuery);
     let allApplications: any[] = [];
 
-    for (const jobDoc of jobsSnap.docs) {
+    for (const jobApplicationDoc of jobApplicationsSnap.docs) {
+      const jobApplicationData = jobApplicationDoc.data();
+      const jobRef = doc(db, "jobs", jobApplicationData.jobId);
+      const jobDoc = await getDoc(jobRef);
       const jobData = jobDoc.data();
-      const jobApplications = jobData.applications || [];
 
-      const applicationsWithJobDetails = await Promise.all(
-        jobApplications.map(async (app: any) => {
-          let company = jobData.company || "Unknown Company";
-          if (jobData.recruiter) {
-            company = await getRecruiterCompanyName(jobData.recruiter);
-          }
-
-          return {
-            ...app,
-            jobId: jobDoc.id,
-            jobTitle: jobData.title,
-            company,
-          };
-        })
-      );
-
-      allApplications.push(...applicationsWithJobDetails);
+      allApplications.push({ ...jobApplicationData, job: jobData });
     }
+
+    // console.log("allApplications ", allApplications);
 
     if (allApplications.length === 0) {
       res.status(200).json({
@@ -410,35 +387,39 @@ export const getAllApplications: RequestHandler = async (
       allApplications = allApplications.slice(0, limit);
     }
 
-    const applicationsWithDetails = await Promise.all(
-      allApplications.map(async (app: any) => {
-        const studentRef = doc(db, "students", app.student);
-        const studentDoc = await getDoc(studentRef);
-        const studentData = studentDoc.exists() ? studentDoc.data() : null;
+    // const applicationsWithDetails = await Promise.all(
+    //   allApplications.map(async (app: any) => {
+    //     const studentRef = doc(db, "students", app.student);
+    //     const studentDoc = await getDoc(studentRef);
+    //     const studentData = studentDoc.exists() ? studentDoc.data() : null;
 
-        return {
-          ...app,
-          student: studentData
-            ? {
-              id: studentDoc.id,
-              name: `${studentData.firstName} ${studentData.lastName}`,
-              email: studentData.regEmail,
-              cgpa: studentData.cgpa || "N/A",
-              mobile: studentData.mobile,
-              branch: studentData.branch,
-              linkedin: studentData.linkedin,
-              batch: studentData.batch,
-              rollNumber: studentData.rollNumber,
-            }
-            : "Student not found",
-        };
-      })
-    );
+    //     const cgpaRef = doc(db, "cgpa", app.student.toUpperCase());
+    //     const cgpaDoc = await getDoc(cgpaRef);
+    //     const cgpaData = cgpaDoc.exists() ? cgpaDoc.data() : null;
+
+    //     return {
+    //       ...app,
+    //       student: studentData
+    //         ? {
+    //             id: studentDoc.id,
+    //             name: `${studentData.firstName} ${studentData.lastName}`,
+    //             email: studentData.regEmail,
+    //             cgpa: cgpaData?.cgpa || "N/A",
+    //             mobile: studentData.mobile,
+    //             branch: studentData.branch,
+    //             linkedin: studentData.linkedin,
+    //             batch: studentData.batch,
+    //             rollNumber: studentData.rollNumber,
+    //           }
+    //         : "Student not found",
+    //     };
+    //   })
+    // );
 
     res.status(200).json({
       success: true,
       message: "Applications retrieved successfully",
-      data: applicationsWithDetails,
+      data: allApplications,
     });
   } catch (error) {
     next(error);
@@ -452,12 +433,10 @@ export const getPendingVerifications: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -518,12 +497,10 @@ export const verifyJob: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -573,12 +550,10 @@ export const updateApplicationStatus: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Access forbidden. TAP Coordinator access required.",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
