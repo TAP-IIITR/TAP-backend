@@ -213,6 +213,19 @@ export const getJobById: RequestHandler = async (
     }
 
     const jobData = jobDoc.data();
+    // console.log("jobData", jobData);
+    let allApplications = [];
+    for (const application of jobData.applications) {
+      // console.log("application", application);
+      const applicationRef = collection(db, "jobApplications");
+      const q = query(applicationRef, where("id", "==", application.id));
+      const applicationSnap = await getDocs(q);
+      const applicationDoc = applicationSnap.docs[0];
+      if (applicationDoc.exists()) {
+        allApplications.push(applicationDoc.data());
+      }
+    }
+
     let company = jobData.company || "Unknown Company";
     if (jobData.recruiter) {
       company = await getRecruiterCompanyName(jobData.recruiter);
@@ -234,7 +247,7 @@ export const getJobById: RequestHandler = async (
         form: jobData.form,
         company,
         status: jobData.status,
-        applications: jobData.applications || [],
+        applications: allApplications || [],
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
       },
     });
@@ -406,16 +419,16 @@ export const getAllApplications: RequestHandler = async (
           ...app,
           student: studentData
             ? {
-                id: studentDoc.id,
-                name: `${studentData.firstName} ${studentData.lastName}`,
-                email: studentData.regEmail,
-                cgpa: studentData.cgpa || "N/A",
-                mobile: studentData.mobile,
-                branch: studentData.branch,
-                linkedin: studentData.linkedin,
-                batch: studentData.batch,
-                rollNumber: studentData.rollNumber,
-              }
+              id: studentDoc.id,
+              name: `${studentData.firstName} ${studentData.lastName}`,
+              email: studentData.regEmail,
+              cgpa: studentData.cgpa || "N/A",
+              mobile: studentData.mobile,
+              branch: studentData.branch,
+              linkedin: studentData.linkedin,
+              batch: studentData.batch,
+              rollNumber: studentData.rollNumber,
+            }
             : "Student not found",
         };
       })
