@@ -314,7 +314,7 @@ export const applyJob = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE");
+    // console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE");
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
     // console.log(jobRef);
@@ -404,25 +404,25 @@ export const applyJob = async (
     }
 
     // Get student details if form is missing student information
-    if (!jobApplicationForm.studentName || !jobApplicationForm.email) {
-      const studentRef = doc(db, "students", student.id);
-      const studentDoc = await getDoc(studentRef);
+    // if (!jobApplicationForm.studentName || !jobApplicationForm.email) {
+    //   const studentRef = doc(db, "students", student.id);
+    //   const studentDoc = await getDoc(studentRef);
 
-      if (!studentDoc.exists()) {
-        throw new NotFoundError("Student record not found");
-      }
+    //   if (!studentDoc.exists()) {
+    //     throw new NotFoundError("Student record not found");
+    //   }
 
-      const studentData = studentDoc.data();
+    //   const studentData = studentDoc.data();
 
-      jobApplicationForm = {
-        ...jobApplicationForm,
-        studentName: `${studentData.firstName} ${studentData.lastName}`,
-        contactNumber: studentData.mobile || "Not provided",
-        email: studentData.regEmail,
-        // cgpa: studentData.cgpa || 0,
-        resumeUrl: studentData.resume ? studentData.resume.url : "Not provided",
-      };
-    }
+    //   jobApplicationForm = {
+    //     ...jobApplicationForm,
+    //     studentName: `${studentData.firstName} ${studentData.lastName}`,
+    //     contactNumber: studentData.mobile || "Not provided",
+    //     email: studentData.regEmail,
+    //     // cgpa: studentData.cgpa || 0,
+    //     resumeUrl: studentData.resume ? studentData.resume.url : "Not provided",
+    //   };
+    // }
 
     // Filter out empty keys from jobApplicationForm
     const sanitizedForm = Object.fromEntries(
