@@ -1,6 +1,13 @@
 import { AuthenticatedRequest } from "../../types/express";
 import { RequestHandler, Response, NextFunction } from "express";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
@@ -8,16 +15,25 @@ import { NotFoundError } from "../../errors/Not-Found-Error";
 const STUDENTS_COLLECTION = "students";
 const JOBS_COLLECTION = "jobs";
 
-const getStudents: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const getStudents: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // Check if the user is a TAP Coordinator
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
     const branch = req.query.branch as string | undefined;
-    const batch = req.query.batch ? parseInt(req.query.batch as string) : undefined;
+    const batch = req.query.batch
+      ? parseInt(req.query.batch as string)
+      : undefined;
 
     // Build the query
     let studentsQuery = query(collection(db, STUDENTS_COLLECTION));
@@ -44,11 +60,18 @@ const getStudents: RequestHandler = async (req: AuthenticatedRequest, res: Respo
   }
 };
 
-const getStudent: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const getStudent: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // Check if the user is a TAP Coordinator
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -60,6 +83,9 @@ const getStudent: RequestHandler = async (req: AuthenticatedRequest, res: Respon
     const studentRef = doc(db, STUDENTS_COLLECTION, studentId);
     const studentDoc = await getDoc(studentRef);
 
+    const cgpaRef = doc(db, "CGPA", studentId.toUpperCase());
+    const cgpaDoc = await getDoc(cgpaRef);
+
     if (!studentDoc.exists()) {
       throw new NotFoundError("Student not found");
     }
@@ -70,6 +96,7 @@ const getStudent: RequestHandler = async (req: AuthenticatedRequest, res: Respon
       data: {
         id: studentDoc.id,
         ...studentDoc.data(),
+        cgpa: cgpaDoc.exists() ? cgpaDoc.data().cgpa : null,
       },
     });
   } catch (error) {
@@ -77,11 +104,18 @@ const getStudent: RequestHandler = async (req: AuthenticatedRequest, res: Respon
   }
 };
 
-const getStudentApplications: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const getStudentApplications: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     // Check if the user is a TAP Coordinator
     if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
       return;
     }
 
@@ -98,30 +132,27 @@ const getStudentApplications: RequestHandler = async (req: AuthenticatedRequest,
     }
 
     // Fetch all jobs and filter applications for this student
-    const jobsRef = collection(db, JOBS_COLLECTION);
-    const jobsSnap = await getDocs(jobsRef);
+    let jobApplicationsQuery = query(
+      collection(db, "jobApplications"),
+      where("studentId", "==", studentId)
+    );
 
-    const applications: any[] = [];
-    for (const jobDoc of jobsSnap.docs) {
+    const jobApplicationsSnap = await getDocs(jobApplicationsQuery);
+    let allApplications: any[] = [];
+
+    for (const jobApplicationDoc of jobApplicationsSnap.docs) {
+      const jobApplicationData = jobApplicationDoc.data();
+      const jobRef = doc(db, "jobs", jobApplicationData.jobId);
+      const jobDoc = await getDoc(jobRef);
       const jobData = jobDoc.data();
-      const jobApplications = jobData.applications || [];
-      const studentApps = jobApplications.filter((app: any) => app.student === studentId);
 
-      studentApps.forEach((app: any) => {
-        applications.push({
-          jobId: jobDoc.id,
-          jobTitle: jobData.title,
-          company: jobData.recruiter, // You may need to fetch recruiter details
-          status: app.status,
-          appliedAt: app.appliedAt,
-        });
-      });
+      allApplications.push({ ...jobApplicationData, job: jobData });
     }
 
     res.status(200).json({
       success: true,
       message: "Student applications retrieved successfully",
-      data: applications,
+      data: allApplications,
     });
   } catch (error) {
     next(error);
