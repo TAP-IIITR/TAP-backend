@@ -214,6 +214,7 @@ export const getJobById: RequestHandler = async (
 
     const jobData = jobDoc.data();
     // console.log("jobData", jobData);
+    // console.log("jobData", jobData);
     let allApplications = [];
     for (const application of jobData.applications) {
       // console.log("application", application);
