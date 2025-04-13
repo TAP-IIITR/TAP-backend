@@ -6,7 +6,7 @@ import {
   login,
   logout,
   resetPassword,
-  confirmResetPassword
+  confirmResetPassword,
 } from "../controllers/auth.controllers";
 import { checkAuth } from "../../middleware/auth.middleware";
 import { validateRequest } from "../../middleware/validation.middleware";
@@ -17,7 +17,10 @@ const router = Router();
 const registerValidation = [
   body("reg_email")
     .isEmail()
-    .withMessage("Please provide a valid email"),
+    .withMessage("Please provide a valid college email"),
+  body("personal_email")
+    .isEmail()
+    .withMessage("Please provide a valid personal email"),
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters"),
@@ -30,15 +33,11 @@ const registerValidation = [
   body("mobile")
     .isLength({ min: 10 })
     .withMessage("Mobile number must be at least 10 digits"),
-  body("linkedin")
-    .isURL()
-    .withMessage("Please provide a valid LinkedIn URL"),
+  body("linkedin").isURL().withMessage("Please provide a valid LinkedIn URL"),
 ];
 
 const loginValidation = [
-  body("reg_email")
-    .isEmail()
-    .withMessage("Please provide a valid email"),
+  body("reg_email").isEmail().withMessage("Please provide a valid email"),
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters"),
