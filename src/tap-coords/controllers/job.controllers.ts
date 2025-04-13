@@ -19,6 +19,20 @@ import { db } from "../../config/firebase";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+// Configure AWS S3 Client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-west-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+
+const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'your-bucket-name';
+
 
 export const createJob: RequestHandler = async (
   req: AuthenticatedRequest,
@@ -26,10 +40,10 @@ export const createJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== 'tap') {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: 'Access forbidden. TAP Coordinator access required.',
       });
       return;
     }
@@ -61,21 +75,51 @@ export const createJob: RequestHandler = async (
       !jobType
     ) {
       throw new BadRequestError(
-        "Missing required fields: title, JD, location, package, eligibility, eligibleBatches, deadline, form, company, and jobType are required"
+        'Missing required fields: title, JD, location, package, eligibility, eligibleBatches, deadline, form, company, and jobType are required'
       );
     }
 
     let recruiterId = null;
     if (recruiter) {
-      const recruiterRef = doc(db, "recruiters", recruiter);
+      const recruiterRef = doc(db, 'recruiters', recruiter);
       const recruiterDoc = await getDoc(recruiterRef);
       if (!recruiterDoc.exists()) {
-        throw new NotFoundError("Recruiter not found");
+        throw new NotFoundError('Recruiter not found');
       }
       recruiterId = recruiter;
     }
 
     const jobId = uuidv4();
+    let jdFileUrl: string | undefined;
+
+    // Handle JD file upload if provided
+    if (req.file) {
+      const key = `jdFiles/${jobId}/jd.pdf`;
+      const putObjectCommand = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        ContentType: 'application/pdf',
+        // Removed ACL: 'public-read' to avoid AccessControlListNotSupported error
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
+
+      const s3Response = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: req.file.buffer,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': req.file.size.toString(),
+        },
+      });
+
+      if (!s3Response.ok) {
+        throw new BadRequestError(`S3 upload failed: ${await s3Response.text()}`);
+      }
+
+      jdFileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    }
+
     const newJob = {
       id: jobId,
       title,
@@ -87,20 +131,21 @@ export const createJob: RequestHandler = async (
       deadline: new Date(deadline).toISOString(),
       form,
       company,
-      jobType, // Add jobType to the job document
+      jobType,
       recruiter: recruiterId,
       createdBy: req.user.id,
       applications: [],
-      status: "pending_verification", // Start as pending verification
+      status: 'pending_verification',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      ...(jdFileUrl && { jdFile: jdFileUrl }),
     };
 
-    await addDoc(collection(db, "jobs"), newJob);
+    await addDoc(collection(db, 'jobs'), newJob);
 
     res.status(201).json({
       success: true,
-      message: "Job created successfully",
+      message: 'Job created successfully',
       data: { jobId },
     });
   } catch (error) {
@@ -244,6 +289,7 @@ export const getJobById: RequestHandler = async (
         company,
         status: jobData.status,
         applications: allApplications || [],
+        jfFile : jobData.jdFile || null,
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
       },
     });
