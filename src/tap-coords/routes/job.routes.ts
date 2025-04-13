@@ -12,6 +12,7 @@ import {
   getPendingVerifications,
   verifyJob,
   updateApplicationStatus,
+  sendJobNotifications,
 } from "../controllers/job.controllers";
 import { checkTapAuth } from "../../middleware/tapauth.middleware";
 
@@ -78,6 +79,14 @@ router.put(
   ],
   validateRequest,
   updateJob
+);
+// You can use this for reminder notification / manual triggering
+router.post(
+  "/:id/notify",
+  checkTapAuth,
+  [param("id").isString().withMessage("Valid job ID is required")],
+  validateRequest,
+  sendJobNotifications
 );
 // Add these routes to the existing tapJobRouter
 // router.put(
