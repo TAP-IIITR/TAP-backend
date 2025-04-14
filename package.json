@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/local.js", 
+    "lambda": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +18,7 @@
     "@aws-sdk/s3-request-presigner": "^3.740.0",
     "@types/multer": "^1.4.12",
     "@types/nodemailer": "^6.4.17",
+    "@vendia/serverless-express": "^4.12.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
