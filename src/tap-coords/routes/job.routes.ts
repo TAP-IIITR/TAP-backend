@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 import { body, param, query } from 'express-validator';
 import { checkTapAuth } from '../../middleware/tapauth.middleware';
 import { validateRequest } from '../../middleware/validation.middleware';
@@ -36,17 +36,7 @@ const upload = multer({
 router.post(
   '/',
   checkTapAuth,
-  upload, // Handle JD file upload
-  [
-    body('title').notEmpty().withMessage('Title is required'),
-    body('JD').notEmpty().withMessage('Job description is required'),
-    body('location').notEmpty().withMessage('Location is required'),
-    body('package').notEmpty().withMessage('Package is required'),
-    body('eligibility').notEmpty().withMessage('Eligibility criteria is required'),
-    // body('eligibleBatches').isArray().withMessage('Eligible Batches must be an array'),
-    body('deadline').isISO8601().withMessage('Valid deadline date is required'),
-  ],
-  validateRequest,
+  upload,
   createJob
 );
 
