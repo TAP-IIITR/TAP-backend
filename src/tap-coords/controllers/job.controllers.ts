@@ -20,12 +20,10 @@ import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  sendEmail,
-  generateJobNotificationEmail,
-} from "../../../src/utils/ses";
+
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { generateJobNotificationEmail, sendEmail } from "../../utils/ses";
 
 // Configure AWS S3 Client
 const s3Client = new S3Client({

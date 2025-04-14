@@ -1,18 +1,27 @@
-FROM public.ecr.aws/lambda/nodejs:20
+FROM node:20-alpine
 
-WORKDIR ${LAMBDA_TASK_ROOT}
+WORKDIR /app
 
-# Copy package files
+# Copy package files first
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
+# Copy tsconfig.json
+COPY tsconfig.json ./
+
 # Copy source code
-COPY . .
+COPY src/ ./src/
 
-# Copy .env file
-COPY .env ./
+# Build TypeScript
+RUN npm run build
 
-# Set the CMD to your handler
-CMD [ "src/index.js" ] 
+# Copy .env file (if it exists)
+COPY .env* ./
+
+# Expose port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "start"]
