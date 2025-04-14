@@ -11,23 +11,23 @@ export class S3ResumeRepository implements IResumeRepository {
 
   constructor() {
     // Ensure all required environment variables are present
-    if (!process.env.AWS_ACCESS_KEY_ID || 
-        !process.env.AWS_SECRET_ACCESS_KEY || 
-        !process.env.AWS_REGION || 
-        !process.env.AWS_S3_BUCKET) {
+    if (!process.env.AWS_ACCESS_KEY_ID1 || 
+        !process.env.AWS_SECRET_ACCESS_KEY1 || 
+        !process.env.AWS_REGION1 || 
+        !process.env.AWS_S3_BUCKET1) {
       throw new Error('Missing required AWS configuration');
     }
 
     this.s3Client = new S3Client({
-      region: process.env.AWS_REGION,
+      region: process.env.AWS_REGION1,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID1,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY1
       },
       forcePathStyle: true // Important for some regions
     });
     
-    this.bucketName = process.env.AWS_S3_BUCKET;
+    this.bucketName = process.env.AWS_S3_BUCKET1;
   }
 
   async generateUploadUrl(rollNumber: string, fileType: string): Promise<string> {

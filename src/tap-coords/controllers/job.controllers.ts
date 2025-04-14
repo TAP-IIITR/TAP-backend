@@ -27,14 +27,14 @@ import { generateJobNotificationEmail, sendEmail } from "../../utils/ses";
 
 // Configure AWS S3 Client
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
+  region: process.env.AWS_REGION1 || 'us-west-2',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID1 || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY1 || '',
   },
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'your-bucket-name';
+const BUCKET_NAME = process.env.AWS_S3_BUCKET1 || 'your-bucket-name';
 
 
 export const createJob: RequestHandler = async (
@@ -120,7 +120,7 @@ export const createJob: RequestHandler = async (
         throw new BadRequestError(`S3 upload failed: ${await s3Response.text()}`);
       }
 
-      jdFileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      jdFileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION1}.amazonaws.com/${key}`;
     }
 
     const newJob = {
