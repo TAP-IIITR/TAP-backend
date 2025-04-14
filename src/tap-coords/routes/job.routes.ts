@@ -14,8 +14,6 @@ import {
   updateApplicationStatus,
   sendJobNotifications,
 } from "../controllers/job.controllers";
-import { checkTapAuth } from "../../middleware/tapauth.middleware";
-} from '../controllers/job.controllers';
 import multer from 'multer';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
 
