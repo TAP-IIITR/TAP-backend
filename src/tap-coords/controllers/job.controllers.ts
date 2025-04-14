@@ -19,6 +19,11 @@ import { db } from "../../config/firebase";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
+
+import {
+  sendEmail,
+  generateJobNotificationEmail,
+} from "../../../src/utils/ses";
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -135,18 +140,26 @@ export const createJob: RequestHandler = async (
       recruiter: recruiterId,
       createdBy: req.user.id,
       applications: [],
-      status: 'pending_verification',
+      status: "active", // Set as active directly
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       ...(jdFileUrl && { jdFile: jdFileUrl }),
     };
 
-    await addDoc(collection(db, 'jobs'), newJob);
+    const docRef = await addDoc(collection(db, "jobs"), newJob);
+
+    // Send email notifications immediately when job is created
+    const notificationResult = await sendJobNotificationsToEligibleStudents(
+      docRef.id
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Job created successfully',
-      data: { jobId },
+      message: "Job created successfully and notifications sent",
+      data: {
+        jobId,
+        notifications: notificationResult,
+      },
     });
   } catch (error) {
     next(error);
@@ -579,6 +592,9 @@ export const verifyJob: RequestHandler = async (
       status: newStatus,
       updatedAt: serverTimestamp(),
     });
+    if (action === "approve") {
+      await sendJobNotificationsToEligibleStudents(jobId);
+    }
 
     res.status(200).json({
       success: true,
@@ -661,6 +677,116 @@ export const updateApplicationStatus: RequestHandler = async (
   } catch (error) {
     next(error);
   }
+};
+
+export const sendJobNotifications: RequestHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user?.role !== "tap") {
+      res.status(403).json({
+        success: false,
+        message: "Access forbidden. TAP Coordinator access required.",
+      });
+      return;
+    }
+
+    const jobId = req.params.id;
+    if (!jobId) {
+      throw new BadRequestError("Job ID is required");
+    }
+
+    const result = await sendJobNotificationsToEligibleStudents(jobId);
+
+    res.status(200).json({
+      success: true,
+      message: "Job notifications sent successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Helper function to send job notifications to eligible students
+const sendJobNotificationsToEligibleStudents = async (jobId: string) => {
+  // Get job details
+  const jobRef = doc(db, "jobs", jobId);
+  const jobDoc = await getDoc(jobRef);
+
+  if (!jobDoc.exists()) {
+    throw new NotFoundError("Job not found");
+  }
+
+  const jobData = jobDoc.data();
+  const eligibleBatches = jobData.eligibleBatches || [];
+
+  if (eligibleBatches.length === 0) {
+    return { status: "No eligible batches specified" };
+  }
+
+  // Get company name
+  let company = jobData.company || "Unknown Company";
+  if (jobData.recruiter) {
+    company = await getRecruiterCompanyName(jobData.recruiter);
+  }
+
+  // Construct job details for email
+  const jobDetails = {
+    ...jobData,
+    company,
+  };
+
+  // Generate email content
+  const { htmlBody, textBody } = generateJobNotificationEmail(jobDetails);
+  const subject = `New Job Opportunity: ${jobData.title} at ${company}`;
+
+  // Query all eligible students at once based on batch
+  let emailsSent = 0;
+  let eligibleStudents = 0;
+
+  const studentsRef = collection(db, "students");
+  const q = query(studentsRef, where("batch", "in", eligibleBatches));
+  const studentsSnapshot = await getDocs(q);
+
+  // Collect all eligible student emails
+  const eligibleEmails: string[] = [];
+
+  studentsSnapshot.forEach((snapshot) => {
+    const student = snapshot.data();
+    if (student && student.regEmail) {
+      eligibleEmails.push(student.regEmail);
+      eligibleStudents++;
+    }
+  });
+
+  console.log(`Found ${eligibleStudents} eligible students for job ${jobId}`);
+
+  // Send emails (if there are eligible students)
+  if (eligibleEmails.length > 0) {
+    // Process in batches of 50 emails to avoid SES limits
+    const batchSize = 50;
+    for (let i = 0; i < eligibleEmails.length; i += batchSize) {
+      const batch = eligibleEmails.slice(i, i + batchSize);
+      try {
+        await sendEmail(batch, subject, htmlBody, textBody);
+        emailsSent += batch.length;
+        console.log(
+          `Sent email batch ${i / batchSize + 1} (${batch.length} emails)`
+        );
+      } catch (error) {
+        console.error(`Error sending email batch ${i / batchSize + 1}:`, error);
+      }
+    }
+  }
+
+  return {
+    eligibleStudents,
+    emailsSent,
+    eligibleBatches,
+  };
 };
 
 const getRecruiterCompanyName = async (

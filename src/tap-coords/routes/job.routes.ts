@@ -12,6 +12,9 @@ import {
   getPendingVerifications,
   verifyJob,
   updateApplicationStatus,
+  sendJobNotifications,
+} from "../controllers/job.controllers";
+import { checkTapAuth } from "../../middleware/tapauth.middleware";
 } from '../controllers/job.controllers';
 import multer from 'multer';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
@@ -68,6 +71,31 @@ router.put(
   validateRequest,
   updateJob
 );
+
+// You can use this for reminder notification / manual triggering
+router.post(
+  "/:id/notify",
+  checkTapAuth,
+  [param("id").isString().withMessage("Valid job ID is required")],
+  validateRequest,
+  sendJobNotifications
+);
+// Add these routes to the existing tapJobRouter
+// router.put(
+//     "/applications/:jobId/:studentId",
+//     checkTapAuth,
+//     [
+//       param("jobId").isUUID().withMessage("Valid job ID is required"),
+//       param("studentId").isString().withMessage("Valid student ID is required"),
+//       body("status")
+//         .isIn(["selected", "rejected", "under_review", "pending"])
+//         .withMessage("Status must be 'selected', 'rejected', 'under_review', or 'pending'"),
+//     ],
+//     validateRequest,
+//     updateApplicationStatus
+//   );
+router.get("/pending-verifications", checkTapAuth, getPendingVerifications);
+
 router.delete(
   '/:id',
   checkTapAuth,
@@ -76,6 +104,7 @@ router.delete(
   deleteJob
 );
 router.get('/pending-verifications', checkTapAuth, getPendingVerifications);
+
 router.put(
   '/verify/:id',
   checkTapAuth,
