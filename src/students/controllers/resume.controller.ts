@@ -12,15 +12,15 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Configure AWS S3 Client
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
+  region: process.env.AWS_REGION1 || 'us-west-2',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID1 || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY1 || '',
   },
   forcePathStyle: true,
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'your-bucket-name';
+const BUCKET_NAME = process.env.AWS_S3_BUCKET1 || 'your-bucket-name';
 
 // Configure multer for PDF files
 const storage = multer.memoryStorage();
@@ -61,7 +61,7 @@ export const uploadResume = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION || !process.env.AWS_S3_BUCKET) {
+    if (!process.env.AWS_ACCESS_KEY_ID1 || !process.env.AWS_SECRET_ACCESS_KEY1 || !process.env.AWS_REGION1 || !process.env.AWS_S3_BUCKET1) {
       throw new BadRequestError('Missing AWS configuration in environment variables');
     }
 
@@ -102,7 +102,7 @@ export const uploadResume = async (
       throw new BadRequestError(`S3 upload failed: ${errorText}`);
     }
 
-    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION1}.amazonaws.com/${key}`;
 
     const userRef = doc(db, 'students', rollNumber);
     const userSnapshot = await getDoc(userRef);
@@ -138,7 +138,7 @@ export const updateResume = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION || !process.env.AWS_S3_BUCKET) {
+    if (!process.env.AWS_ACCESS_KEY_ID1 || !process.env.AWS_SECRET_ACCESS_KEY1 || !process.env.AWS_REGION1 || !process.env.AWS_S3_BUCKET1) {
       throw new BadRequestError('Missing AWS configuration in environment variables');
     }
 
@@ -182,7 +182,7 @@ export const updateResume = async (
       throw new BadRequestError(`S3 upload failed: ${await s3Response.text()}`);
     }
 
-    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION1}.amazonaws.com/${key}`;
     const userRef = doc(db, 'students', rollNumber);
     await updateDoc(userRef, {
       resume: {
@@ -215,7 +215,7 @@ export const getResume = async (
     }
 
     const key = `resumes/${rollNumber}/resume.pdf`;
-    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION1}.amazonaws.com/${key}`;
 
     const getObjectCommand = new GetObjectCommand({
       Bucket: BUCKET_NAME,

@@ -1,22 +1,26 @@
 import express from "express";
+import serverless from "@vendia/serverless-express";
 import "express-async-errors";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
 
+// Initialize Express app
 const app = express();
 
-// Middlewares
+// Setup middlewares
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://placements-iiitr.vercel.app"], // Allow frontend origins
-    credentials: true, // Allow cookies/credentials to be sent
-    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allow required methods
+    origin: [
+      "http://localhost:5173",
+      "https://placements-iiitr.vercel.app"
+    ],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
-
 app.use(cookieParser());
 
 // Student routes
@@ -46,6 +50,6 @@ app.use("/api/student/tap", tapStudentRouter);
 // Error handler middleware
 app.use(errorHandler);
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
-});
+// Export the Lambda handler via serverless-express
+export const handler = serverless({ app });
+export default app;

@@ -1,18 +1,20 @@
 FROM public.ecr.aws/lambda/nodejs:20
 
-WORKDIR ${LAMBDA_TASK_ROOT}
+WORKDIR /var/task
 
-# Copy package files
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
-COPY . .
+# Copy your TypeScript configuration and source code
+COPY tsconfig.json ./
+COPY src/ ./src/
 
-# Copy .env file
-COPY .env ./
+# Build the TypeScript code
+RUN npm run build
 
-# Set the CMD to your handler
-CMD [ "src/index.js" ] 
+# Copy .env files if they exist
+COPY .env* ./
+
+# Set the CMD to point to your Lambda handler function
+CMD ["dist/index.handler"]
