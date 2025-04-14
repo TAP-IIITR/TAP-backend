@@ -187,10 +187,9 @@ export const getAllJobs: RequestHandler = async (
     const sortBy = req.query.sortBy as string | undefined;
     const sortOrder = req.query.sortOrder as "asc" | "desc" | undefined;
 
-    let jobsQuery = query(
-      collection(db, "jobs"),
-      where("createdBy", "==", req.user.id)
-    );
+    // Remove the filter that restricts jobs to only those created by the current user
+    let jobsQuery = query(collection(db, "jobs"));
+    
     if (sortBy) {
       const field = sortBy === "postedTime" ? "createdAt" : "package";
       jobsQuery = query(jobsQuery, orderBy(field, sortOrder || "desc"));
@@ -216,6 +215,7 @@ export const getAllJobs: RequestHandler = async (
           status: jobData.status,
           deadline: jobData.deadline,
           applications: jobData.applications || [],
+          createdBy: jobData.createdBy || "Unknown",  // Include the creator information
         };
       })
     );
@@ -500,10 +500,10 @@ export const getPendingVerifications: RequestHandler = async (
     }
 
     const jobsRef = collection(db, "jobs");
+    // Remove the filter that restricts pending jobs to only those created by the current user
     const q = query(
       jobsRef,
-      where("status", "==", "pending_verification"),
-      where("createdBy", "==", req.user.id)
+      where("status", "==", "pending_verification")
     );
     const jobsSnap = await getDocs(q);
 
@@ -534,6 +534,7 @@ export const getPendingVerifications: RequestHandler = async (
             package: jobData.package,
             createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
             status: jobData.status,
+            createdBy: jobData.createdBy || "Unknown", // Include creator information
           };
         }
       )
