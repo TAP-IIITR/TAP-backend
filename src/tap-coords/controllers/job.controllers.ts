@@ -52,12 +52,18 @@ export const createJob: RequestHandler = async (
       });
       return;
     }
+    const { jobData } = req.body;
+    if (!jobData) {
+      throw new BadRequestError('Job data is required');
+    }
+
+    const job = JSON.parse(jobData);
 
     const {
       title,
       JD,
       location,
-      package: salaryPackage,
+      salaryPackage,
       eligibility,
       eligibleBatches,
       deadline,
@@ -65,23 +71,11 @@ export const createJob: RequestHandler = async (
       company,
       jobType,
       recruiter,
-    } = req.body;
+    } = job;
 
-    if (
-      !title ||
-      !JD ||
-      !location ||
-      !salaryPackage ||
-      !eligibility ||
-      !eligibleBatches ||
-      !deadline ||
-      !form ||
-      !company ||
-      !jobType
-    ) {
-      throw new BadRequestError(
-        'Missing required fields: title, JD, location, package, eligibility, eligibleBatches, deadline, form, company, and jobType are required'
-      );
+    // Validate required fields
+    if (!title || !JD || !location || !salaryPackage || !eligibility || !eligibleBatches || !deadline || !form || !company) {
+      throw new BadRequestError('All fields are required');
     }
 
     let recruiterId = null;
@@ -143,7 +137,8 @@ export const createJob: RequestHandler = async (
       status: "active", // Set as active directly
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      ...(jdFileUrl && { jdFile: jdFileUrl }),
+      // ...(jdFileUrl && { jdFile: jdFileUrl }),
+      jdFileUrl
     };
 
     const docRef = await addDoc(collection(db, "jobs"), newJob);
@@ -189,7 +184,7 @@ export const getAllJobs: RequestHandler = async (
 
     // Remove the filter that restricts jobs to only those created by the current user
     let jobsQuery = query(collection(db, "jobs"));
-    
+
     if (sortBy) {
       const field = sortBy === "postedTime" ? "createdAt" : "package";
       jobsQuery = query(jobsQuery, orderBy(field, sortOrder || "desc"));
@@ -302,7 +297,7 @@ export const getJobById: RequestHandler = async (
         company,
         status: jobData.status,
         applications: allApplications || [],
-        jfFile : jobData.jdFile || null,
+        jfFile: jobData.jdFile || null,
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
       },
     });
