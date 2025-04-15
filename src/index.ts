@@ -43,6 +43,10 @@ app.use("/api/jobs/tap", tapJobRouter);
 app.use("/api/recruiter/tap", tapRecruiterRouter);
 app.use("/api/student/tap", tapStudentRouter);
 
+app.get("/", (req, res) => {
+  res.send("Welcome to the Placement Portal API of IIIT Ranchi!");
+});
+
 // Error handler middleware
 app.use(errorHandler);
 
