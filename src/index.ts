@@ -3,6 +3,9 @@ import "express-async-errors";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 
@@ -50,6 +53,6 @@ app.get("/", (req, res) => {
 // Error handler middleware
 app.use(errorHandler);
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT} `);
 });
