@@ -11,8 +11,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Copy .env file
-COPY .env ./
+# Environment variables will be configured in Railway
+# No need to copy .env file as it doesn't exist
+# COPY .env ./ 
 
 # Set the CMD to your handler
-CMD [ "src/index.js" ] 
+CMD [ "src/index.js" ]
