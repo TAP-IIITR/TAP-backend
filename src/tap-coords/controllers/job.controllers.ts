@@ -20,10 +20,7 @@ import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  sendEmail,
-  generateJobNotificationEmail,
-} from "../../../src/utils/ses";
+import { sendEmail, generateJobNotificationEmail } from "../../utils/ses";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
