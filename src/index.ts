@@ -13,7 +13,11 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://placements-iiitr.vercel.app","https://tap-iiitr-three.vercel.app/"], // Allow frontend origins
+    origin: [
+      "http://localhost:5173",
+      "https://placements-iiitr.vercel.app",
+      "https://tap-iiitr-three.vercel.app",
+    ], // Allow frontend origins
     credentials: true, // Allow cookies/credentials to be sent
     allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
     methods: ["GET", "POST", "PUT", "DELETE"], // Allow required methods
