@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev src/index.ts",
     "clean": "rm -rf ./dist && find . -type f \\( -name \".js\" -o -name \".js.map\" -o -name \".d.ts\" \\) ! -path \"./node_modules/*\" -delete",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && npm i && tsc",
     "start": "node dist/index.js"
   },
   "keywords": [],
