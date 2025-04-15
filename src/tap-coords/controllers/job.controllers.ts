@@ -24,20 +24,19 @@ import {
   sendEmail,
   generateJobNotificationEmail,
 } from "../../../src/utils/ses";
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Configure AWS S3 Client
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
+  region: process.env.AWS_REGION || "us-west-2",
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'your-bucket-name';
-
+const BUCKET_NAME = process.env.AWS_S3_BUCKET || "your-bucket-name";
 
 export const createJob: RequestHandler = async (
   req: AuthenticatedRequest,
@@ -45,16 +44,17 @@ export const createJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== 'tap') {
+    if (req.user?.role !== "tap") {
       res.status(403).json({
         success: false,
-        message: 'Access forbidden. TAP Coordinator access required.',
+        message: "Access forbidden. TAP Coordinator access required.",
       });
       return;
     }
     const { jobData } = req.body;
+    console.log("jobData", jobData);
     if (!jobData) {
-      throw new BadRequestError('Job data is required');
+      throw new BadRequestError("Job data is required");
     }
 
     const job = JSON.parse(jobData);
@@ -74,16 +74,26 @@ export const createJob: RequestHandler = async (
     } = job;
 
     // Validate required fields
-    if (!title || !JD || !location || !salaryPackage || !eligibility || !eligibleBatches || !deadline || !form || !company) {
-      throw new BadRequestError('All fields are required');
+    if (
+      !title ||
+      !JD ||
+      !location ||
+      !salaryPackage ||
+      !eligibility ||
+      !eligibleBatches ||
+      !deadline ||
+      !form ||
+      !company
+    ) {
+      throw new BadRequestError("All fields are required");
     }
 
     let recruiterId = null;
     if (recruiter) {
-      const recruiterRef = doc(db, 'recruiters', recruiter);
+      const recruiterRef = doc(db, "recruiters", recruiter);
       const recruiterDoc = await getDoc(recruiterRef);
       if (!recruiterDoc.exists()) {
-        throw new NotFoundError('Recruiter not found');
+        throw new NotFoundError("Recruiter not found");
       }
       recruiterId = recruiter;
     }
@@ -97,23 +107,27 @@ export const createJob: RequestHandler = async (
       const putObjectCommand = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: key,
-        ContentType: 'application/pdf',
+        ContentType: "application/pdf",
         // Removed ACL: 'public-read' to avoid AccessControlListNotSupported error
       });
 
-      const uploadUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
+      const uploadUrl = await getSignedUrl(s3Client, putObjectCommand, {
+        expiresIn: 3600,
+      });
 
       const s3Response = await fetch(uploadUrl, {
-        method: 'PUT',
+        method: "PUT",
         body: req.file.buffer,
         headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Length': req.file.size.toString(),
+          "Content-Type": "application/pdf",
+          "Content-Length": req.file.size.toString(),
         },
       });
 
       if (!s3Response.ok) {
-        throw new BadRequestError(`S3 upload failed: ${await s3Response.text()}`);
+        throw new BadRequestError(
+          `S3 upload failed: ${await s3Response.text()}`
+        );
       }
 
       jdFileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
@@ -138,7 +152,7 @@ export const createJob: RequestHandler = async (
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       // ...(jdFileUrl && { jdFile: jdFileUrl }),
-      jdFileUrl
+      jdFileUrl,
     };
 
     const docRef = await addDoc(collection(db, "jobs"), newJob);
@@ -210,7 +224,7 @@ export const getAllJobs: RequestHandler = async (
           status: jobData.status,
           deadline: jobData.deadline,
           applications: jobData.applications || [],
-          createdBy: jobData.createdBy || "Unknown",  // Include the creator information
+          createdBy: jobData.createdBy || "Unknown", // Include the creator information
         };
       })
     );
@@ -297,7 +311,7 @@ export const getJobById: RequestHandler = async (
         company,
         status: jobData.status,
         applications: allApplications || [],
-        jfFile: jobData.jdFile || null,
+        jdFileUrl: jobData.jdFileUrl || null,
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
       },
     });
@@ -496,10 +510,7 @@ export const getPendingVerifications: RequestHandler = async (
 
     const jobsRef = collection(db, "jobs");
     // Remove the filter that restricts pending jobs to only those created by the current user
-    const q = query(
-      jobsRef,
-      where("status", "==", "pending_verification")
-    );
+    const q = query(jobsRef, where("status", "==", "pending_verification"));
     const jobsSnap = await getDocs(q);
 
     const pendingJobs = await Promise.all(

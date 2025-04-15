@@ -186,6 +186,7 @@ export const getJob = async (
         form: jobData.form,
         company,
         status: jobData.status,
+        jdFileUrl: jobData.jdFileUrl || null,
         applications: jobData.applications || [],
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
         student: studentData
