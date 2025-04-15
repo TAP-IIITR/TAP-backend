@@ -64,6 +64,7 @@ export const register: RequestHandler = async (req, res, next) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: SERVER_CONFIG.NODE_ENV === "production",
+      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
       maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
     });
 
@@ -87,16 +88,15 @@ export const login: RequestHandler = async (req, res, next) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: SERVER_CONFIG.NODE_ENV === "production",
+      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
       maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
     });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Login successful",
-        data: { id, token },
-      });
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: { id, token },
+    });
   } catch (error) {
     next(error);
   }
@@ -126,12 +126,10 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
     const { reg_email } = req.body;
 
     await authService.resetPassword(reg_email);
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Password reset email sent successfully",
-      });
+    res.status(200).json({
+      success: true,
+      message: "Password reset email sent successfully",
+    });
   } catch (error) {
     next(error);
   }
