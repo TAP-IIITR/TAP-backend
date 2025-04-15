@@ -70,8 +70,8 @@ export const register: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: SERVER_CONFIG.NODE_ENV === "production",
-      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
+      secure: true,
+      sameSite: "none",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -129,8 +129,8 @@ export const login: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: SERVER_CONFIG.NODE_ENV === "production",
-      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
+      secure: true,
+      sameSite: "none",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
