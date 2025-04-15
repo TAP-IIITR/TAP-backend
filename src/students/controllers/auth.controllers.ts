@@ -63,9 +63,9 @@ export const register: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: SERVER_CONFIG.NODE_ENV === "production",
-      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
+      secure: true, // Must be true in production
+      sameSite: "none", // Cross-site cookies need this
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     res.status(201).json({
@@ -87,9 +87,9 @@ export const login: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: SERVER_CONFIG.NODE_ENV === "production",
-      sameSite: SERVER_CONFIG.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: SERVER_CONFIG.COOKIE_MAX_AGE,
+      secure: true, // Must be true in production
+      sameSite: "none", // Cross-site cookies need this
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     res.status(200).json({
