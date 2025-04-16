@@ -66,7 +66,6 @@ export const register: RequestHandler = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: ".vercel.app", // Add this line
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -93,7 +92,6 @@ export const login: RequestHandler = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: ".vercel.app", // Add this line
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
