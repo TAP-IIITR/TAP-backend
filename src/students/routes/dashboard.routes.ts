@@ -9,11 +9,7 @@ import { validateRequest } from "../../middleware/validation.middleware";
 
 const router = Router();
 
-router.get(
-  "/",
-  // checkAuth
-  getDashboard
-);
+router.get("/", checkAuth, getDashboard);
 
 router.put(
   "/",
