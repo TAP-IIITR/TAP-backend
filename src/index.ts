@@ -20,9 +20,6 @@ app.use(
   cors({
     origin: "https://tap-iiitr-three.vercel.app",
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    exposedHeaders: ["Set-Cookie"],
   })
 );
 
