@@ -61,12 +61,14 @@ export const register: RequestHandler = async (req, res, next) => {
 
     const { id, token } = await authService.register(student);
 
+    // In your cookie settings (both register and login):
     res.cookie("token", token, {
       httpOnly: true,
-      // secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
-      // sameSite: "none",
-      // path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      secure: true,
+      sameSite: "none",
+      domain: ".railway.app", // Add this line
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
@@ -86,12 +88,14 @@ export const login: RequestHandler = async (req, res, next) => {
 
     const { id, token } = await authService.login(reg_email, password);
 
+    // In your cookie settings (both register and login):
     res.cookie("token", token, {
       httpOnly: true,
-      // secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
-      // sameSite: "none", // 'none' required for cross-origin cookies
-      // path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      secure: true,
+      sameSite: "none",
+      domain: ".railway.app", // Add this line
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({

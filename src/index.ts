@@ -21,10 +21,11 @@ app.use(
       "https://placements-iiitr.vercel.app",
       "https://tap-iiitr-three.vercel.app",
       "https://cerulean-licorice-01034a.netlify.app",
-    ], // Allow frontend origins
-    credentials: true, // Allow cookies/credentials to be sent
-    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allow required methods
+    ],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    exposedHeaders: ["Set-Cookie"], // Add this line
   })
 );
 
