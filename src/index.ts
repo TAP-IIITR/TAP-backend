@@ -9,11 +9,13 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
-// app.set("trust proxy", 1);
+// ⚠️ Needed if you're behind a proxy (like Railway, Vercel, or Heroku)
+app.set("trust proxy", 1); // Allows secure cookies to work behind proxy
 
-// comment to re-deploy
+// Parses incoming JSON payloads
 app.use(express.json());
+
+// CORS must be set before routes
 app.use(
   cors({
     origin: [
@@ -25,10 +27,11 @@ app.use(
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE"],
-    exposedHeaders: ["Set-Cookie"], // Add this line
+    exposedHeaders: ["Set-Cookie"],
   })
 );
 
+// Parses cookies before routes
 app.use(cookieParser());
 
 // Student routes
