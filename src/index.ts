@@ -10,14 +10,14 @@ dotenv.config();
 const app = express();
 
 // Middlewares
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
 app.use(express.json());
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
       "https://placements-iiitr.vercel.app",
-      "https://tap-iiitr-three.vercel.app",
+      "https://tap-iiitr-three.vercel.app/",
     ], // Allow frontend origins
     credentials: true, // Allow cookies/credentials to be sent
     allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
