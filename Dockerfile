@@ -3,9 +3,6 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install build tools needed for the clean script
-RUN apk add --no-cache findutils
-
 # 1. Copy package files first for better caching
 COPY package*.json ./
 
@@ -15,8 +12,9 @@ RUN npm install
 # 3. Copy all source files
 COPY . .
 
-# 4. Modified build command for better error visibility
-RUN npm run build || (echo "Build failed with error:" && cat npm-debug.log 2>/dev/null || true && exit 1)
+# 4. Skip the clean script and run TypeScript compilation directly
+RUN echo "Building TypeScript project..." && \
+    npx tsc || (echo "TypeScript compilation failed:" && exit 1)
 
 # Stage 2: Runtime - Production image
 FROM node:20-alpine
