@@ -1,6 +1,6 @@
-FROM public.ecr.aws/lambda/nodejs:20
+FROM node:20-alpine
 
-WORKDIR ${LAMBDA_TASK_ROOT}
+WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
@@ -11,9 +11,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Environment variables will be configured in Railway
-# No need to copy .env file as it doesn't exist
-# COPY .env ./ 
+# Build the application
+RUN npm run build
 
-# Set the CMD to your handler
-CMD [ "src/index.js" ]
+# Environment variables will be configured in Railway
+
+# Use the start command from package.json
+CMD ["npm", "start"]
