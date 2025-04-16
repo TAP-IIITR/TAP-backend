@@ -63,11 +63,10 @@ export const register: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // Must be true in production
-      sameSite: "none", // Required for cross-origin on Vercel
-      domain: ".vercel.app", // Critical for Vercel deployments
+      secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
+      sameSite: "none", // 'none' required for cross-origin cookies
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     });
 
     res.status(201).json({
@@ -89,11 +88,10 @@ export const login: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // Must be true in production
-      sameSite: "none", // Required for cross-origin on Vercel
-      domain: ".vercel.app", // Critical for Vercel deployments
+      secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
+      sameSite: "none", // 'none' required for cross-origin cookies
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     });
 
     res.status(200).json({
