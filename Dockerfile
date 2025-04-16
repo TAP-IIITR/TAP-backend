@@ -3,31 +3,39 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Set memory limits for Node.js
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
 # 1. Copy package files first for better caching
 COPY package*.json ./
 
-# 2. Install all dependencies (including devDependencies needed for build) 
-RUN npm install
+# 2. Install only necessary dependencies for building
+RUN npm install --no-audit --no-fund --ignore-scripts
 
-# 3. Copy all source files
-COPY . .
+# 3. Copy source files (only what's needed for compilation)
+COPY tsconfig.json ./
+COPY src ./src
 
-# 4. Run TypeScript compilation with verbose output
+# 4. Compile TypeScript with minimal resources
 RUN echo "Building TypeScript project..." && \
-    npx tsc --listFiles --traceResolution > typescript-debug.log 2>&1 || \
-    (echo "TypeScript compilation failed:" && cat typescript-debug.log && exit 1)
+    npx tsc --pretty false || (echo "TypeScript compilation failed" && exit 1)
 
 # Stage 2: Runtime - Production image
 FROM node:20-alpine
 
 WORKDIR /app
 
-# 1. Only copy production dependencies
-COPY package*.json ./
-RUN npm install --production --ignore-scripts
+# Set production environment
+ENV NODE_ENV=production
 
-# 2. Copy only the built dist folder
+# 1. Copy package files
+COPY package*.json ./
+
+# 2. Install only production dependencies
+RUN npm install --only=production --no-audit --no-fund
+
+# 3. Copy only the built dist folder
 COPY --from=builder /app/dist ./dist
 
-# 3. Use your existing start script
+# 4. Use your existing start script
 CMD ["npm", "start"]
