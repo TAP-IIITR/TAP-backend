@@ -18,12 +18,7 @@ app.use(express.json());
 // CORS must be set before routes
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://placements-iiitr.vercel.app",
-      "https://tap-iiitr-three.vercel.app",
-      "https://cerulean-licorice-01034a.netlify.app",
-    ],
+    origin: "https://tap-iiitr-three.vercel.app",
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE"],
