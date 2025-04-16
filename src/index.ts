@@ -17,7 +17,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://placements-iiitr.vercel.app",
-      "https://tap-iiitr-three.vercel.app/",
+      "https://tap-iiitr-three.vercel.app",
     ], // Allow frontend origins
     credentials: true, // Allow cookies/credentials to be sent
     allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
