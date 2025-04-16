@@ -63,10 +63,10 @@ export const register: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
-      sameSite: "none", // 'none' required for cross-origin cookies
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      // secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
+      // sameSite: "none",
+      // path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(201).json({
@@ -88,9 +88,9 @@ export const login: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
-      sameSite: "none", // 'none' required for cross-origin cookies
-      path: "/",
+      // secure: true, // must be true for HTTPS (Vercel + Railway both use HTTPS)
+      // sameSite: "none", // 'none' required for cross-origin cookies
+      // path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     });
 
