@@ -9,8 +9,8 @@ dotenv.config();
 
 const app = express();
 
-// ⚠️ Needed if you're behind a proxy (like Railway, Vercel, or Heroku)
-app.set("trust proxy", 1); // Allows secure cookies to work behind proxy
+// // ⚠️ Needed if you're behind a proxy (like Railway, Vercel, or Heroku)
+// app.set("trust proxy", 1); // Allows secure cookies to work behind proxy
 
 // Parses incoming JSON payloads
 app.use(express.json());
@@ -18,7 +18,7 @@ app.use(express.json());
 // CORS must be set before routes
 app.use(
   cors({
-    origin: "https://tap-iiitr-three.vercel.app",
+    origin: ["https://tap-iiitr-three.vercel.app", "http://localhost:5173"],
     credentials: true,
   })
 );
