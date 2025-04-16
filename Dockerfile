@@ -12,9 +12,8 @@ COPY package*.json ./
 # 2. Install only necessary dependencies for building
 RUN npm install --no-audit --no-fund --ignore-scripts
 
-# 3. Copy source files (only what's needed for compilation)
-COPY tsconfig.json ./
-COPY src ./src
+# 3. Copy all source files
+COPY . .
 
 # 4. Compile TypeScript with minimal resources
 RUN echo "Building TypeScript project..." && \
