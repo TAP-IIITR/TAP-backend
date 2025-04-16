@@ -63,8 +63,9 @@ export const register: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: true, // Must be true in production
+      sameSite: "none", // Required for cross-origin on Vercel
+      domain: ".vercel.app", // Critical for Vercel deployments
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -88,8 +89,9 @@ export const login: RequestHandler = async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: true, // Must be true in production
+      sameSite: "none", // Required for cross-origin on Vercel
+      domain: ".vercel.app", // Critical for Vercel deployments
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
