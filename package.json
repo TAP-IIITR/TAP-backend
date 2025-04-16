@@ -4,12 +4,11 @@
   "description": "backend for tap",
   "main": "dist/index.js",
   "scripts": {
-  "dev": "ts-node-dev src/index.ts",
-  "clean": "rimraf ./dist",
-  "build": "npm run clean && tsc",
-  "start": "node dist/index.js"
+    "dev": "ts-node-dev src/index.ts",
+    "clean": "rimraf ./dist",
+    "build": "npm run clean && tsc",
+    "start": "node dist/index.js"
   },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -23,6 +22,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-async-errors": "^3.1.1",
+    "express-rate-limit": "^7.5.0",
     "express-validator": "^7.2.1",
     "firebase": "^11.6.0",
     "jsonwebtoken": "^9.0.2",

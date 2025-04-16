@@ -4,6 +4,18 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
 import dotenv from "dotenv";
+import { rateLimit } from "express-rate-limit";
+
+const limiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.log("Rate limit hit!");
+    res.status(429).json({ error: "Rate limit exceeded", statusCode: 429 });
+  },
+});
 
 dotenv.config();
 
@@ -11,7 +23,7 @@ const app = express();
 
 // // ⚠️ Needed if you're behind a proxy (like Railway, Vercel, or Heroku)
 // app.set("trust proxy", 1); // Allows secure cookies to work behind proxy
-
+app.use(limiter);
 // Parses incoming JSON payloads
 app.use(express.json());
 
@@ -51,7 +63,11 @@ app.use("/api/recruiter/tap", tapRecruiterRouter);
 app.use("/api/student/tap", tapStudentRouter);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the Placement Portal API of IIIT Ranchi!");
+  console.log("Request received at root endpoint");
+  res.status(200).json({
+    message: "Welcome to the Placement Portal API of IIIT Ranchi!",
+    status: "success",
+  });
 });
 
 // Error handler middleware
