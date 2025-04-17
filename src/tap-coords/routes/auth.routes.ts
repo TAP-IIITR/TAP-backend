@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { body } from "express-validator";
 import { validateRequest } from "../../middleware/validation.middleware";
-import { checkAuth } from "../../middleware/auth.middleware";
 import {
   register,
   login,
   logout,
   resetPassword,
 } from "../controllers/auth.controllers";
+import { checkTapAuth } from "../../middleware/tapauth.middleware";
 
 const router = Router();
 
@@ -24,7 +24,7 @@ router.post(
 
 router.post("/login", [], validateRequest, login);
 
-router.post("/logout", checkAuth, logout);
+router.post("/logout", checkTapAuth, logout);
 
 router.post(
   "/reset-password",
