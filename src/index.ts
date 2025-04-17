@@ -22,7 +22,7 @@ dotenv.config();
 const app = express();
 
 // // ⚠️ Needed if you're behind a proxy (like Railway, Vercel, or Heroku)
-// app.set("trust proxy", 1); // Allows secure cookies to work behind proxy
+app.set("trust proxy", 1);
 app.use(limiter);
 // Parses incoming JSON payloads
 app.use(express.json());
