@@ -69,19 +69,19 @@ router.post(
   sendJobNotifications
 );
 // Add these routes to the existing tapJobRouter
-// router.put(
-//     "/applications/:jobId/:studentId",
-//     checkTapAuth,
-//     [
-//       param("jobId").isUUID().withMessage("Valid job ID is required"),
-//       param("studentId").isString().withMessage("Valid student ID is required"),
-//       body("status")
-//         .isIn(["selected", "rejected", "under_review", "pending"])
-//         .withMessage("Status must be 'selected', 'rejected', 'under_review', or 'pending'"),
-//     ],
-//     validateRequest,
-//     updateApplicationStatus
-//   );
+router.put(
+  "/applications/:jobId/:studentId",
+  checkTapAuth,
+  [
+    param("jobId").isString().withMessage("Valid job ID is required"),
+    param("studentId").isString().withMessage("Valid student ID is required"),
+    body("status")
+      .isIn(["selected", "rejected", "under_review", "pending"])
+      .withMessage("Status must be 'selected', 'rejected', 'under_review', or 'pending'"),
+  ],
+  validateRequest,
+  updateApplicationStatus
+);
 router.get("/pending-verifications", checkTapAuth, getPendingVerifications);
 
 router.delete(

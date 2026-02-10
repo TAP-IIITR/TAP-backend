@@ -149,7 +149,7 @@ export const createJob: RequestHandler = async (
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       // ...(jdFileUrl && { jdFile: jdFileUrl }),
-      jdFileUrl,
+      jdFileUrl: jdFileUrl || null,
     };
 
     const docRef = await addDoc(collection(db, "jobs"), newJob);
@@ -452,39 +452,43 @@ export const getAllApplications: RequestHandler = async (
       allApplications = allApplications.slice(0, limit);
     }
 
-    // const applicationsWithDetails = await Promise.all(
-    //   allApplications.map(async (app: any) => {
-    //     const studentRef = doc(db, "students", app.student);
-    //     const studentDoc = await getDoc(studentRef);
-    //     const studentData = studentDoc.exists() ? studentDoc.data() : null;
+    const applicationsWithDetails = await Promise.all(
+      allApplications.map(async (app: any) => {
+        if (!app.student || typeof app.student !== 'string') {
+          return { ...app, student: "Invalid Student Data" };
+        }
+        const studentRef = doc(db, "students", app.student);
+        const studentDoc = await getDoc(studentRef);
+        const studentData = studentDoc.exists() ? studentDoc.data() : null;
 
-    //     const cgpaRef = doc(db, "cgpa", app.student.toUpperCase());
-    //     const cgpaDoc = await getDoc(cgpaRef);
-    //     const cgpaData = cgpaDoc.exists() ? cgpaDoc.data() : null;
+        const cgpaRef = doc(db, "cgpa", app.student.toUpperCase());
+        const cgpaDoc = await getDoc(cgpaRef);
+        const cgpaData = cgpaDoc.exists() ? cgpaDoc.data() : null;
 
-    //     return {
-    //       ...app,
-    //       student: studentData
-    //         ? {
-    //             id: studentDoc.id,
-    //             name: `${studentData.firstName} ${studentData.lastName}`,
-    //             email: studentData.regEmail,
-    //             cgpa: cgpaData?.cgpa || "N/A",
-    //             mobile: studentData.mobile,
-    //             branch: studentData.branch,
-    //             linkedin: studentData.linkedin,
-    //             batch: studentData.batch,
-    //             rollNumber: studentData.rollNumber,
-    //           }
-    //         : "Student not found",
-    //     };
-    //   })
-    // );
+        return {
+          ...app,
+          student: studentData
+            ? {
+              id: studentDoc.id,
+              name: `${studentData.firstName} ${studentData.lastName}`,
+              regEmail: studentData.regEmail, // Changed from email to regEmail to match frontend
+              email: studentData.regEmail,
+              cgpa: cgpaData?.cgpa || "N/A",
+              mobile: studentData.mobile,
+              branch: studentData.branch,
+              linkedin: studentData.linkedin,
+              batch: studentData.batch,
+              rollNumber: studentData.rollNumber,
+            }
+            : "Student not found",
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
       message: "Applications retrieved successfully",
-      data: allApplications,
+      data: applicationsWithDetails,
     });
   } catch (error) {
     next(error);
@@ -655,7 +659,11 @@ export const updateApplicationStatus: RequestHandler = async (
       (app: any) => app.student === studentId
     );
 
+    console.log(`Updating status for Job: ${jobId}, Student: ${studentId}`);
+    // console.log("Applications in Job:", applications.map((a: any) => a.student));
+
     if (applicationIndex === -1) {
+      console.error("Application not found in job document. Available students:", applications.map((a: any) => a.student));
       throw new NotFoundError("Application not found");
     }
 
@@ -664,6 +672,21 @@ export const updateApplicationStatus: RequestHandler = async (
       applications,
       updatedAt: serverTimestamp(),
     });
+
+    // Also update the jobApplications collection
+    const jobApplicationsQuery = query(
+      collection(db, "jobApplications"),
+      where("jobId", "==", jobId),
+      where("student", "==", studentId)
+    );
+    const jobApplicationsSnap = await getDocs(jobApplicationsQuery);
+    if (!jobApplicationsSnap.empty) {
+      const jobApplicationRef = jobApplicationsSnap.docs[0].ref;
+      await updateDoc(jobApplicationRef, {
+        status,
+        updatedAt: serverTimestamp(),
+      });
+    }
 
     if (status === "selected") {
       const studentRef = doc(db, "students", studentId);
