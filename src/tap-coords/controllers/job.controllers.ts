@@ -41,10 +41,10 @@ export const createJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -178,10 +178,10 @@ export const getAllJobs: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -255,10 +255,10 @@ export const getJobById: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -323,10 +323,10 @@ export const updateJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -361,10 +361,10 @@ export const deleteJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -398,10 +398,10 @@ export const getAllApplications: RequestHandler = async (
 ) => {
   try {
     console.log("in getallapplications ");
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -501,10 +501,10 @@ export const getPendingVerifications: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -563,10 +563,10 @@ export const verifyJob: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -619,10 +619,10 @@ export const updateApplicationStatus: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -712,10 +712,10 @@ export const sendJobNotifications: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }

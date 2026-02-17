@@ -53,7 +53,7 @@ export const register: RequestHandler = async (req, res, next) => {
     const coordinatorData = {
       name,
       regEmail: email,
-      role: "tap",
+      role: req.body.role || "tap",
       createdAt: new Date(),
       updatedAt: new Date(),
       emailVerified: false,
@@ -66,7 +66,7 @@ export const register: RequestHandler = async (req, res, next) => {
     );
 
     // Generate JWT
-    const token = generateJWT({ id: coordinatorData.id, role: "tap" });
+    const token = generateJWT({ id: coordinatorData.id, role: coordinatorData.role });
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -119,7 +119,7 @@ export const login: RequestHandler = async (req, res, next) => {
     }
 
     // Generate JWT
-    const token = generateJWT({ id: coordinator.id, role: "tap" });
+    const token = generateJWT({ id: coordinator.id, role: coordinator.role });
 
     // Update last login
     await updateDoc(doc(db, TAP_COORDINATORS_COLLECTION, coordinator.id), {
@@ -138,7 +138,7 @@ export const login: RequestHandler = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Coordinator login successful",
-      data: { id: coordinator.id, role: "tap" },
+      data: { id: coordinator.id, role: coordinator.role },
     });
   } catch (error: any) {
     if (error.code === "auth/wrong-password") {

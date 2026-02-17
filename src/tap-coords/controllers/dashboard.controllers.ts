@@ -42,10 +42,10 @@ export const getDashboard = async (
   try {
     // Verify user is TAP coordinator
     console.log("CAME HERE ");
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -131,7 +131,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     if (
       file.mimetype ===
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       file.mimetype === "application/vnd.ms-excel"
     ) {
       cb(null, true);

@@ -27,9 +27,9 @@ export const checkTapAuth = async (
     // Verify JWT token - this will contain the coordinator ID (Firebase UID)
     const decoded = verifyJWT(token);
 
-    // Ensure the role is 'tap'
-    if (decoded.role !== 'tap') {
-      throw new AuthError('Unauthorized: Only coordinators can access this resource.');
+    // Ensure the role is 'tap' or 'tpo'
+    if (decoded.role !== 'tap' && decoded.role !== 'tpo') {
+      throw new AuthError('Unauthorized: Only coordinators or TPO can access this resource.');
     }
 
     // Check if the user is logged in to Firebase Auth
@@ -56,7 +56,52 @@ export const checkTapAuth = async (
     // Set the user information on the request
     req.user = {
       id: decoded.id, // This is the Firebase UID
-      role: decoded.role, // 'tap'
+      role: decoded.role, // 'tap' or 'tpo'
+    };
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkTpoAuth = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.cookies.token;
+
+    if (!token) {
+      throw new AuthError('Access denied. No token provided.');
+    }
+
+    const decoded = verifyJWT(token);
+
+    if (decoded.role !== 'tpo') {
+      throw new AuthError('Unauthorized: Only TPO can access this resource.');
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new AuthError('Not authenticated. Please login again.');
+    }
+
+    const coordinatorDoc = await getDoc(doc(db, 'tap_coordinators', decoded.id));
+    if (!coordinatorDoc.exists()) {
+      throw new AuthError('TPO account not found. Please login again.');
+    }
+
+    const coordinatorData = coordinatorDoc.data();
+
+    if (coordinatorData.id !== currentUser.uid) {
+      throw new AuthError('Invalid authentication. Please login again.');
+    }
+
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
     };
 
     next();

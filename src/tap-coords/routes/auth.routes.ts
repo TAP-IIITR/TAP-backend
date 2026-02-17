@@ -7,12 +7,13 @@ import {
   logout,
   resetPassword,
 } from "../controllers/auth.controllers";
-import { checkTapAuth } from "../../middleware/tapauth.middleware";
+import { checkTapAuth, checkTpoAuth } from "../../middleware/tapauth.middleware";
 
 const router = Router();
 
 router.post(
   "/register",
+  checkTpoAuth,
   [
     body("name").notEmpty().withMessage("Name is required"),
     body("email").isEmail().withMessage("Please provide a valid email"),

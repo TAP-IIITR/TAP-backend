@@ -11,8 +11,8 @@ const RECRUITERS_COLLECTION = "recruiters";
 const getAllRecruiters: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator or TPO access required." });
       return;
     }
 
@@ -39,8 +39,8 @@ const getAllRecruiters: RequestHandler = async (req: AuthenticatedRequest, res: 
 const getRecruiterById: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator or TPO access required." });
       return;
     }
 
@@ -72,8 +72,8 @@ const getRecruiterById: RequestHandler = async (req: AuthenticatedRequest, res: 
 const verifyRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator or TPO access required." });
       return;
     }
 
@@ -107,8 +107,8 @@ const verifyRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: R
 const deleteRecruiter: RequestHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
-      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator access required." });
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      res.status(403).json({ success: false, message: "Access forbidden. TAP Coordinator or TPO access required." });
       return;
     }
 

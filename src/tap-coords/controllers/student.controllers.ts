@@ -22,10 +22,10 @@ const getStudents: RequestHandler = async (
 ) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -67,10 +67,10 @@ const getStudent: RequestHandler = async (
 ) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
@@ -111,10 +111,10 @@ const getStudentApplications: RequestHandler = async (
 ) => {
   try {
     // Check if the user is a TAP Coordinator
-    if (req.user?.role !== "tap") {
+    if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
-        message: "Access forbidden. TAP Coordinator access required.",
+        message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
