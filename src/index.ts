@@ -1,6 +1,9 @@
 import express from "express";
 import "express-async-errors";
 import cors from "cors";
+import './config/firebase'; // Initialize Firebase Client
+import './config/firebaseAdmin'; // Initialize Firebase Admin
+import { SERVER_CONFIG } from './config/serverConfig';
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
 import dotenv from "dotenv";

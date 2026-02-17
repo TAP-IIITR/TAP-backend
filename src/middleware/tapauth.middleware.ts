@@ -32,12 +32,6 @@ export const checkTapAuth = async (
       throw new AuthError('Unauthorized: Only coordinators or TPO can access this resource.');
     }
 
-    // Check if the user is logged in to Firebase Auth
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new AuthError('Not authenticated. Please login again.');
-    }
-
     // Verify the coordinator exists in Firestore with the ID from the token
     const coordinatorDoc = await getDoc(doc(db, 'tap_coordinators', decoded.id));
     if (!coordinatorDoc.exists()) {
@@ -48,8 +42,8 @@ export const checkTapAuth = async (
     const coordinatorData = coordinatorDoc.data();
 
 
-    // Verify that the current Firebase user UID matches the one stored in Firestore
-    if (coordinatorData.id !== currentUser.uid) {
+    // Verify the coordinator matches the ID in token (redundant check if already in token, but safe)
+    if (coordinatorData.id !== decoded.id) {
       throw new AuthError('Invalid authentication. Please login again.');
     }
 
@@ -83,11 +77,6 @@ export const checkTpoAuth = async (
       throw new AuthError('Unauthorized: Only TPO can access this resource.');
     }
 
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new AuthError('Not authenticated. Please login again.');
-    }
-
     const coordinatorDoc = await getDoc(doc(db, 'tap_coordinators', decoded.id));
     if (!coordinatorDoc.exists()) {
       throw new AuthError('TPO account not found. Please login again.');
@@ -95,7 +84,7 @@ export const checkTpoAuth = async (
 
     const coordinatorData = coordinatorDoc.data();
 
-    if (coordinatorData.id !== currentUser.uid) {
+    if (coordinatorData.id !== decoded.id) {
       throw new AuthError('Invalid authentication. Please login again.');
     }
 

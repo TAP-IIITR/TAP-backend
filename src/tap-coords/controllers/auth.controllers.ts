@@ -206,3 +206,158 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getAllCoordinators: RequestHandler = async (req, res, next) => {
+  try {
+    const tapRef = collection(db, TAP_COORDINATORS_COLLECTION);
+    const querySnapshot = await getDocs(tapRef);
+    const coordinators = querySnapshot.docs.map((doc) => ({
+      ...doc.data(),
+      id: doc.id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: coordinators,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+import { adminAuth, adminDb } from "../../config/firebaseAdmin";
+
+export const deleteCoordinator: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new BadRequestError("Coordinator ID is required");
+    }
+
+    // Delete from Firebase Auth
+    try {
+      await adminAuth.deleteUser(id);
+    } catch (error: any) {
+      if (error.code !== "auth/user-not-found") {
+        logger.error("Error deleting user from Firebase Auth", { error, id });
+      }
+    }
+
+    // Delete from Firestore
+    await adminDb.collection(TAP_COORDINATORS_COLLECTION).doc(id).delete();
+
+    logger.info(`Coordinator ${id} deleted successfully`);
+    res.status(200).json({
+      success: true,
+      message: "Coordinator deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+import * as XLSX from "xlsx";
+
+export const getSampleCSV: RequestHandler = async (req, res, next) => {
+  try {
+    const data = [
+      ["name", "email", "password"],
+      ["John Doe", "john.doe@iiitranchi.ac.in", "tempPass123"],
+      ["Jane Smith", "jane.smith@iiitranchi.ac.in", "tempPass456"],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sample");
+
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "csv" });
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=coordinator_template.csv"
+    );
+    res.status(200).send(buf);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkRegister: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new BadRequestError("No file uploaded");
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data: any[] = XLSX.utils.sheet_to_json(sheet);
+
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
+
+    for (const row of data) {
+      const { name, email, password } = row;
+
+      if (!name || !email || !password) {
+        results.failed++;
+        results.errors.push(`Missing data for row: ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      try {
+        // Check if exists
+        const userQuery = await adminAuth
+          .getUserByEmail(email)
+          .catch(() => null);
+        if (userQuery) {
+          results.failed++;
+          results.errors.push(`User already exists: ${email}`);
+          continue;
+        }
+
+        // Create in Auth
+        const userRecord = await adminAuth.createUser({
+          email,
+          password,
+          displayName: name,
+        });
+
+        // Save to Firestore
+        const coordinatorData = {
+          name,
+          regEmail: email,
+          role: "tap",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          emailVerified: false,
+          id: userRecord.uid,
+        };
+
+        await adminDb
+          .collection(TAP_COORDINATORS_COLLECTION)
+          .doc(userRecord.uid)
+          .set(coordinatorData);
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`Error registering ${email}: ${error.message}`);
+      }
+    }
+
+    logger.info(
+      `Bulk registration complete. Success: ${results.success}, Failed: ${results.failed}`
+    );
+    res.status(200).json({
+      success: true,
+      message: `Bulk registration complete. ${results.success} successfully registered, ${results.failed} failed.`,
+      data: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
