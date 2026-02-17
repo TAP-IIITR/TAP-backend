@@ -5,6 +5,7 @@ import { NotFoundError } from '../../errors/Not-Found-Error';
 import { AuthError } from '../../errors/Auth-Error';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
 import multer from 'multer';
+import logger from '../../utils/logger';
 import { db } from '../../config/firebase'; // Adjusted path
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
@@ -28,10 +29,10 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    console.log('File received:', file);
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
+      logger.warn(`Invalid file type uploaded for resume: ${file.mimetype}`);
       cb(new BadRequestError('Only PDF files are allowed'));
     }
   },
@@ -40,13 +41,12 @@ const upload = multer({
 // Middleware to promisify multer upload
 const uploadMiddleware = (req: Request, res: Response): Promise<void> =>
   new Promise((resolve, reject) => {
-    console.log('Request headers:', req.headers);
-    console.log('Request body:', req.body);
     upload(req, res, (err) => {
       if (err instanceof multer.MulterError) {
-        console.error('Multer error details:', err);
+        logger.error('Multer error during resume upload', { err });
         reject(new BadRequestError(`Multer error: ${err.message} (Field: ${err.field || 'unknown'})`));
       } else if (err) {
+        logger.error('Unknown error during resume upload', { err });
         reject(err);
       } else {
         resolve();
@@ -73,7 +73,6 @@ export const uploadResume = async (
     }
 
     const rollNumber = req.user?.id;
-    console.log('User ID from request:', rollNumber); // Log the user ID
     if (!rollNumber) {
       throw new AuthError('Unauthorized');
     }
@@ -89,16 +88,16 @@ export const uploadResume = async (
 
     const s3Response = await fetch(uploadUrl, {
       method: 'PUT',
-      body: file.buffer,
+      body: file.buffer as any,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Length': file.size.toString(),
       },
     });
-    console.log(s3Response,"S3 response status:", s3Response.status); // Log the S3 response status
-    console.log('S3 response headers:', s3Response.headers); // Log the S3 response headers
+
     if (!s3Response.ok) {
       const errorText = await s3Response.text();
+      logger.error('S3 resume upload failed', { status: s3Response.status, errorText });
       throw new BadRequestError(`S3 upload failed: ${errorText}`);
     }
 
@@ -106,8 +105,8 @@ export const uploadResume = async (
 
     const userRef = doc(db, 'students', rollNumber);
     const userSnapshot = await getDoc(userRef);
-    console.log('User exists in Firestore:', userSnapshot.exists()); // Log if user exists
     if (!userSnapshot.exists()) {
+      logger.warn(`User document not found during resume upload: ${rollNumber}`);
       throw new NotFoundError('User not found');
     }
 
@@ -118,13 +117,14 @@ export const uploadResume = async (
       },
     });
 
+    logger.info(`Resume uploaded successfully for student ${rollNumber}`);
     res.status(200).json({
       success: true,
       message: 'Resume uploaded successfully',
       data: { resumeUrl: publicUrl },
     });
   } catch (error) {
-    console.error('Error in uploadResume:', error);
+    logger.error('Error in uploadResume', { error });
     next(error);
   }
 };
@@ -165,7 +165,7 @@ export const updateResume = async (
       Bucket: BUCKET_NAME,
       Key: key,
       ContentType: 'application/pdf',
-      ACL: 'public-read', 
+      ACL: 'public-read',
     });
 
     const uploadUrl = await getSignedUrl(s3Client, putObjectCommand, { expiresIn: 3600 });
@@ -191,13 +191,14 @@ export const updateResume = async (
       },
     });
 
+    logger.info(`Resume updated successfully for student ${rollNumber}`);
     res.status(200).json({
       success: true,
       message: 'Resume updated successfully',
       data: { resumeUrl: publicUrl },
     });
   } catch (error) {
-    console.error('Error in updateResume:', error);
+    logger.error('Error in updateResume', { error });
     next(error);
   }
 };
@@ -225,7 +226,7 @@ export const getResume = async (
     try {
       await s3Client.send(getObjectCommand);
     } catch (error) {
-      console.error('Resume not found in S3:', error);
+      logger.warn(`Resume not found in S3 for student ${rollNumber}`);
       throw new NotFoundError('Resume not found');
     }
 
@@ -234,7 +235,7 @@ export const getResume = async (
       data: { resumeUrl: publicUrl },
     });
   } catch (error) {
-    console.error('Error in getResume:', error);
+    logger.error('Error in getResume', { error });
     next(error);
   }
 };

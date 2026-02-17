@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
 import dotenv from "dotenv";
 import { rateLimit } from "express-rate-limit";
+import logger from './utils/logger';
+import { requestLogger } from './middleware/requestLogger';
 
 const limiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -12,7 +14,7 @@ const limiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler: (req, res) => {
-    console.log("Rate limit hit!");
+    logger.warn(`Rate limit hit for IP: ${req.ip}`);
     res.status(429).json({ error: "Rate limit exceeded", statusCode: 429 });
   },
 });
@@ -26,6 +28,7 @@ app.set("trust proxy", 1);
 app.use(limiter);
 // Parses incoming JSON payloads
 app.use(express.json());
+app.use(requestLogger);
 
 // CORS must be set before routes
 app.use(
@@ -63,7 +66,6 @@ app.use("/api/recruiter/tap", tapRecruiterRouter);
 app.use("/api/student/tap", tapStudentRouter);
 
 app.get("/", (req, res) => {
-  console.log("Request received at root endpoint");
   res.status(200).json({
     message: "Welcome to the Placement Portal API of IIIT Ranchi!",
     status: "success",
@@ -75,6 +77,5 @@ app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
-

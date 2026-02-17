@@ -19,6 +19,7 @@ import { BadRequestError } from "../../errors/Bad-Request-Error";
 import * as XLSX from "xlsx";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
+import logger from "../../utils/logger";
 
 // Add these interfaces near the top of the file
 interface CGPARow {
@@ -41,15 +42,14 @@ export const getDashboard = async (
 ): Promise<void> => {
   try {
     // Verify user is TAP coordinator
-    console.log("CAME HERE ");
     if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      logger.warn(`Unauthorized access attempt to dashboard by user ${req.user?.id} with role ${req.user?.role}`);
       res.status(403).json({
         success: false,
         message: "Access forbidden. TAP Coordinator or TPO access required.",
       });
       return;
     }
-    console.log("HERE TOO");
 
     // Get dashboard statistics
     const stats = await getDashboardStats();
@@ -120,7 +120,7 @@ async function getDashboardStats() {
       placedStudents,
     };
   } catch (error) {
-    console.log("Can't get dashboard stats:", error);
+    logger.error("Failed to retrieve dashboard stats", { error });
     throw error;
   }
 }
@@ -227,7 +227,7 @@ export const updateCGPA = async (
         message: `Successfully updated CGPA for ${cgpaUpdates.length} students and added semester records`,
       });
     } catch (error) {
-      console.error("Error in updateCGPA:", error);
+      logger.error("Error in updateCGPA", { error });
       next(error);
     }
   });

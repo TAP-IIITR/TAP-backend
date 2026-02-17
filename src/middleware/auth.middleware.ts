@@ -4,6 +4,7 @@ import { verifyJWT } from "../utils/jwt";
 import { AuthError } from "../errors/Auth-Error";
 import { doc, getDoc } from "firebase/firestore";
 import { sendEmailVerification } from "firebase/auth";
+import logger from "../utils/logger";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -19,7 +20,6 @@ export const checkAuth = async (
 ) => {
   try {
     const token = req.cookies.token;
-    // console.log(token, 'is our token');
 
     if (!token) {
       throw new AuthError("Access denied. No token provided.");
@@ -65,45 +65,3 @@ export const checkAuth = async (
     next(error);
   }
 };
-
-// export const checkAuth = async (
-//   req: AuthenticatedRequest,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     const token = req.cookies.token;
-
-//     if (!token) {
-//       throw new AuthError("Access denied. No token provided.");
-//     }
-
-//     // Verify JWT token
-//     const decoded = verifyJWT(token);
-
-//     // Verify the student exists in Firestore
-//     const studentDoc = await getDoc(doc(db, "students", decoded.id));
-//     if (!studentDoc.exists()) {
-//       throw new AuthError("Student not found. Please login again.");
-//     }
-
-//     // Get the student data
-//     const studentData = studentDoc.data();
-
-//     // Check if mail is verified - using the data from Firestore
-//     if (!studentData.emailVerified) {
-//       // Don't try to send verification email here if currentUser is null
-//       throw new AuthError("Email not verified. Please verify your email.");
-//     }
-
-//     // Set the user information on the request
-//     req.user = {
-//       id: decoded.id,
-//       role: decoded.role,
-//     };
-
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// };

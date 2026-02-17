@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
+import logger from "../../utils/logger";
 import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../../types/express";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
@@ -191,15 +192,15 @@ export const getJob = async (
         createdAt: (jobData.createdAt as Timestamp)?.toDate().toISOString(),
         student: studentData
           ? {
-              id: student.id,
-              firstName: studentData.firstName,
-              lastName: studentData.lastName,
-              regEmail: studentData.regEmail,
-              mobile: studentData.mobile,
-              cgpa: cgpaData?.cgpa,
-              resume: studentData.resume,
-              branch: studentData.branch,
-            }
+            id: student.id,
+            firstName: studentData.firstName,
+            lastName: studentData.lastName,
+            regEmail: studentData.regEmail,
+            mobile: studentData.mobile,
+            cgpa: cgpaData?.cgpa,
+            resume: studentData.resume,
+            branch: studentData.branch,
+          }
           : null,
         hasApplied,
       },
@@ -245,14 +246,11 @@ export const getMyApplications = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  console.log("HREe is func to get all my appplications");
   try {
     const student = req.user;
-    console.log(student, "is our student");
     if (!student) {
       throw new BadRequestError("Unauthorized");
     }
-    console.log("student is ", student);
 
     // Query jobApplications collection for the student's applications
     const applicationsQuery = q(
@@ -303,7 +301,7 @@ export const getMyApplications = async (
       applications,
     });
   } catch (error) {
-    console.error("Error fetching applications:", error);
+    logger.error("Error fetching student applications", { error, studentId: req.user?.id });
     next(error);
   }
 };
@@ -315,12 +313,9 @@ export const applyJob = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // console.log("HsldfkajsldfkjasldkfjasldfkjsaldkfjsldkRE");
     const jobId = req.params.id;
     const jobRef = doc(db, "jobs", jobId);
-    // console.log(jobRef);
     const jobDoc = await getDoc(jobRef);
-    // console.log(jobDoc, "is the job doc");
 
     if (!jobDoc.exists()) {
       throw new NotFoundError("Job not found");
@@ -364,7 +359,6 @@ export const applyJob = async (
     if (!jobApplicationForm) {
       throw new BadRequestError("Application form is required");
     }
-    console.log(jobApplicationForm, "is the job application form");
     if (typeof jobApplicationForm === "string") {
       try {
         jobApplicationForm = JSON.parse(jobApplicationForm);
@@ -465,7 +459,7 @@ export const applyJob = async (
       applicationId,
     });
   } catch (error) {
-    console.error("Error applying for job:", error);
+    logger.error("Error applying for job", { error, jobId: req.params.id, studentId: req.user?.id });
     next(error);
   }
 };

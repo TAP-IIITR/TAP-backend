@@ -1,9 +1,9 @@
-import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, DeleteObjectCommand, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { IResumeRepository } from '../interfaces/IResumeRepository';
 import { CustomError } from '../../errors/Custom-Error';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
+import logger from '../../utils/logger';
 
 export class S3ResumeRepository implements IResumeRepository {
   private s3Client: S3Client;
@@ -11,10 +11,10 @@ export class S3ResumeRepository implements IResumeRepository {
 
   constructor() {
     // Ensure all required environment variables are present
-    if (!process.env.AWS_ACCESS_KEY_ID || 
-        !process.env.AWS_SECRET_ACCESS_KEY || 
-        !process.env.AWS_REGION || 
-        !process.env.AWS_S3_BUCKET) {
+    if (!process.env.AWS_ACCESS_KEY_ID ||
+      !process.env.AWS_SECRET_ACCESS_KEY ||
+      !process.env.AWS_REGION ||
+      !process.env.AWS_S3_BUCKET) {
       throw new Error('Missing required AWS configuration');
     }
 
@@ -26,7 +26,7 @@ export class S3ResumeRepository implements IResumeRepository {
       },
       forcePathStyle: true // Important for some regions
     });
-    
+
     this.bucketName = process.env.AWS_S3_BUCKET;
   }
 
@@ -51,7 +51,7 @@ export class S3ResumeRepository implements IResumeRepository {
 
       return signedUrl;
     } catch (error) {
-      console.error('Error generating upload URL:', error);
+      logger.error('Error generating S3 upload URL', { error, rollNumber });
       throw new BadRequestError('S3 error');
     }
   }
@@ -60,7 +60,7 @@ export class S3ResumeRepository implements IResumeRepository {
     try {
       // Define the key for the file to delete
       const key = `resumes/${rollNumber}/latest.pdf`;
-      
+
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
         Key: key
@@ -68,7 +68,7 @@ export class S3ResumeRepository implements IResumeRepository {
 
       await this.s3Client.send(command);
     } catch (error) {
-      console.error('Error deleting resume:', error);
+      logger.error('Error deleting resume from S3', { error, rollNumber });
       throw new BadRequestError('S3 error');
     }
   }
@@ -76,7 +76,7 @@ export class S3ResumeRepository implements IResumeRepository {
   async getResumeUrl(rollNumber: string): Promise<string | null> {
     try {
       const key = `resumes/${rollNumber}/latest.pdf`; // Use rollNumber as key
-      
+
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: key
@@ -89,7 +89,7 @@ export class S3ResumeRepository implements IResumeRepository {
 
       return signedUrl;
     } catch (error) {
-      console.error('Error getting resume URL:', error);
+      logger.error('Error getting resume URL from S3', { error, rollNumber });
       return null;
     }
   }

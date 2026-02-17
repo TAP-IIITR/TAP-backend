@@ -3,6 +3,7 @@ import { validationResult } from "express-validator";
 import { AuthService } from "../services/Auth.service";
 import { FirebaseAuthRepository } from "../repositories/FirebaseAuth.repository";
 import { SERVER_CONFIG } from "../../config/serverConfig";
+import logger from "../../utils/logger";
 import { AuthenticatedRequest } from "../../types/express";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { AuthError } from "../../errors/Auth-Error";
@@ -76,7 +77,7 @@ export const register: RequestHandler = async (req, res, next) => {
       data: { id, rollNumber },
     });
   } catch (error) {
-    console.log(error, "is our error");
+    logger.error("Student registration failed", { error, email: req.body.reg_email });
     next(error);
   }
 };

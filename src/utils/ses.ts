@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import logger from "./logger";
 
 // Initialize SES client
 const sesClient = new SESClient({
@@ -51,9 +52,10 @@ export const sendEmail = async (
   try {
     const command = new SendEmailCommand(params);
     const response = await sesClient.send(command);
+    logger.info(`Email sent successfully to ${toAddresses.join(", ")}`, { subject, messageId: response.MessageId });
     return response;
   } catch (error) {
-    console.error("Error sending email:", error);
+    logger.error("Error sending email via SES", { error, to: toAddresses, subject });
     throw error;
   }
 };
@@ -65,7 +67,7 @@ export const sendEmail = async (
  */
 export const generateJobNotificationEmail = (jobDetails: any) => {
   const { title, company, location, package: salaryPackage, deadline, eligibility, jobType } = jobDetails;
-  
+
   const htmlBody = `
     <html>
       <head>
@@ -79,13 +81,13 @@ export const generateJobNotificationEmail = (jobDetails: any) => {
           .details { margin: 20px 0; background-color: #f9f9f9; padding: 15px; border-left: 4px solid #003366; }
           .detail-item { margin-bottom: 10px; }
           .detail-label { font-weight: bold; color: #003366; }
-          .cta-button { 
-            display: inline-block; 
-            background-color: #003366; 
-            color: white; 
-            padding: 10px 20px; 
-            text-decoration: none; 
-            border-radius: 4px; 
+          .cta-button {
+            display: inline-block;
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
             margin-top: 15px;
           }
           .institute-name { font-weight: bold; }
@@ -111,11 +113,11 @@ export const generateJobNotificationEmail = (jobDetails: any) => {
           </div>
           <div class="content">
             <div class="salutation">Dear Student,</div>
-            
+
             <p>The Training and Placement Cell, IIIT Ranchi is pleased to announce a new placement opportunity that aligns with your academic qualifications:</p>
-            
+
             <h1>${title} at ${company} <span class="job-type-tag">${jobType}</span></h1>
-            
+
             <div class="details">
               <div class="detail-item">
                 <span class="detail-label">Position:</span> ${title}
@@ -137,21 +139,21 @@ export const generateJobNotificationEmail = (jobDetails: any) => {
               </div>
               <div class="detail-item">
                 <span class="detail-label">Application Deadline:</span> ${new Date(
-                  deadline
-                ).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+    deadline
+  ).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  })}
               </div>
             </div>
-            
+
             <p>Interested candidates are requested to log in to the Training and Placement portal to view the complete job description and submit their applications before the deadline.</p>
-            
+
             <p style="text-align: center;">
               <a href="https://tap-iiitr-three.vercel.app/login" class="cta-button">Login to Apply</a>
             </p>
-            
+
             <div class="signature">
               <p>Best Regards,</p>
               <p class="institute-name">Training and Placement Cell</p>
@@ -170,13 +172,13 @@ export const generateJobNotificationEmail = (jobDetails: any) => {
   const textBody = `
     INDIAN INSTITUTE OF INFORMATION TECHNOLOGY, RANCHI
     TRAINING AND PLACEMENT CELL
-    
+
     Dear Student,
-    
+
     The Training and Placement Cell, IIIT Ranchi is pleased to announce a new placement opportunity that aligns with your academic qualifications:
-    
+
     ${title.toUpperCase()} at ${company.toUpperCase()} [${jobType}]
-    
+
     Position: ${title}
     Organization: ${company}
     Type: ${jobType}
@@ -184,19 +186,19 @@ export const generateJobNotificationEmail = (jobDetails: any) => {
     Compensation: ${salaryPackage}
     Eligibility Criteria: ${eligibility}
     Application Deadline: ${new Date(deadline).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    })}
-    
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  })}
+
     Interested candidates are requested to log in to the Training and Placement portal to view the complete job description and submit their applications before the deadline.
-    
+
     Please visit: https://tap-iiitr-three.vercel.app/login
-    
+
     Best Regards,
     Training and Placement Cell
     Indian Institute of Information Technology, Ranchi
-    
+
     ---
     This is an official communication from the Training and Placement Cell, IIIT Ranchi.
     Please do not reply to this email. For any queries, kindly contact the T&P Cell at wc.placements@iiitranchi.ac.in

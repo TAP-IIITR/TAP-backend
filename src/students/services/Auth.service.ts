@@ -7,6 +7,7 @@ import { auth } from '../../config/firebase';
 import { BadRequestError } from '../../errors/Bad-Request-Error';
 import { AuthError } from '../../errors/Auth-Error';
 import { NotFoundError } from '../../errors/Not-Found-Error';
+import logger from '../../utils/logger';
 
 export class AuthService implements IAuthService {
   constructor(private authRepository: IAuthRepository) { }
@@ -66,7 +67,7 @@ export class AuthService implements IAuthService {
       if ((error as any).code === 'auth/wrong-password') {
         throw new AuthError('Invalid password');
       }
-      console.log("error is ", error)
+      logger.error("Student login failed", { error, email });
       throw new BadRequestError(error.message);
     }
   }

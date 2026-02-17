@@ -1,17 +1,18 @@
 import { ITapCoordinator } from '../interfaces/ITapCoordinator';
 import { auth, db } from '../../config/firebase';
-import { 
+import logger from '../../utils/logger';
+import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   confirmPasswordReset,
   verifyPasswordResetCode,
   signOut
 } from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
+import {
+  doc,
+  getDoc,
   updateDoc,
-  collection, 
+  collection,
   query,
   where,
   getDocs
@@ -25,7 +26,7 @@ export class TapAuthRepository {
       const tapRef = collection(db, this.tapCollection);
       const q = query(tapRef, where('regEmail', '==', email));
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
         return null;
       }
@@ -36,7 +37,7 @@ export class TapAuthRepository {
         id: tapDoc.id
       };
     } catch (error) {
-      console.error('Error finding TAP coordinator:', error);
+      logger.error('Error finding TAP coordinator', { error, email });
       throw error;
     }
   }
@@ -45,7 +46,7 @@ export class TapAuthRepository {
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      console.error('Error initiating password reset:', error);
+      logger.error('Error initiating password reset for coordinator', { error, email });
       throw error;
     }
   }
@@ -54,7 +55,7 @@ export class TapAuthRepository {
     try {
       return await verifyPasswordResetCode(auth, code);
     } catch (error) {
-      console.error('Error verifying reset code:', error);
+      logger.error('Error verifying reset code for coordinator', { error });
       throw error;
     }
   }
@@ -63,7 +64,7 @@ export class TapAuthRepository {
     try {
       await confirmPasswordReset(auth, code, newPassword);
     } catch (error) {
-      console.error('Error confirming password reset:', error);
+      logger.error('Error confirming password reset for coordinator', { error });
       throw error;
     }
   }

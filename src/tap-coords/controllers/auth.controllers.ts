@@ -4,6 +4,7 @@ import { SERVER_CONFIG } from "../../config/serverConfig";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { AuthError } from "../../errors/Auth-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
+import logger from "../../utils/logger";
 import { auth, db } from "../../config/firebase";
 import {
   createUserWithEmailAndPassword,
@@ -89,7 +90,6 @@ export const register: RequestHandler = async (req, res, next) => {
 export const login: RequestHandler = async (req, res, next) => {
   try {
     const { reg_email, password } = req.body;
-    // console.log("reg_email and password are ",reg_email,password)
     if (!reg_email || !password) {
       throw new BadRequestError("reg_email and password are required");
     }
@@ -135,12 +135,14 @@ export const login: RequestHandler = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    logger.info(`TAP Coordinator login successful for ${reg_email}`);
     res.status(200).json({
       success: true,
       message: "Coordinator login successful",
       data: { id: coordinator.id, role: coordinator.role },
     });
   } catch (error: any) {
+    logger.error("TAP Coordinator login failed", { error, email: req.body.reg_email });
     if (error.code === "auth/wrong-password") {
       next(new AuthError("Invalid password"));
     } else if (error.code === "auth/user-not-found") {

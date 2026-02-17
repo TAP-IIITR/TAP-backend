@@ -1,7 +1,8 @@
 import { IAuthRepository } from '../interfaces/IAuthRepository';
 import { IStudent } from '../interfaces/IStudent';
 import { auth, db } from '../../config/firebase';
-import { 
+import logger from '../../utils/logger';
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -11,12 +12,12 @@ import {
   updatePassword,
   sendEmailVerification
 } from 'firebase/auth';
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
+import {
+  doc,
+  setDoc,
+  getDoc,
   updateDoc,
-  collection, 
+  collection,
   query,
   where,
   getDocs
@@ -38,7 +39,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         id: studentDoc.id
       };
     } catch (error) {
-      console.error('Error finding student by roll number:', error);
+      logger.error('Error in FirebaseAuthRepository', { error, operation: 'findByRollNumber', rollNumber });
       throw error;
     }
   }
@@ -48,7 +49,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       const studentsRef = collection(db, this.studentsCollection);
       const q = query(studentsRef, where('regEmail', '==', email));
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
         return null;
       }
@@ -59,7 +60,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         id: studentDoc.id
       };
     } catch (error) {
-      console.error('Error finding student:', error);
+      logger.error('Error in FirebaseAuthRepository', { error, operation: 'findByEmail', email });
       throw error;
     }
   }
@@ -70,15 +71,15 @@ export class FirebaseAuthRepository implements IAuthRepository {
       const cgpaDocId = `2023UG${rollNumber}`;
       const cgpaDocRef = doc(db, this.cgpaCollection, cgpaDocId);
       const cgpaDoc = await getDoc(cgpaDocRef);
-      
+
       if (cgpaDoc.exists()) {
         const cgpaData = cgpaDoc.data();
         return cgpaData.cgpa;
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Error checking CGPA existence:', error);
+      logger.error('Error checking CGPA existence', { error, rollNumber });
       return null; // Return null instead of throwing to not interrupt the main flow
     }
   }
@@ -110,14 +111,14 @@ export class FirebaseAuthRepository implements IAuthRepository {
       await sendEmailVerification(userCredential.user);
 
       const { password, ...studentData } = student;
-      
+
       // Check if CGPA exists for this roll number
       const cgpa = await this.checkCGPAExists(rollNumber);
-      
+
       // Ensure batch and branch exist or extract them
       const batch = student.batch || extractBatchFromRollNumber(rollNumber);
       const branch = student.branch || extractBranchFromRollNumber(rollNumber);
-      
+
       // Store in Firestore using roll number as document ID
       const studentToSave = {
         ...studentData,
@@ -129,12 +130,12 @@ export class FirebaseAuthRepository implements IAuthRepository {
         batch,
         branch
       };
-      
+
       // Add CGPA if it exists
       if (cgpa !== null) {
         studentToSave.cgpa = cgpa;
       }
-      
+
       await setDoc(doc(db, this.studentsCollection, rollNumber), studentToSave);
 
       return {
@@ -145,7 +146,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         ...(cgpa !== null && { cgpa })
       };
     } catch (error) {
-      console.error('Error creating student:', error);
+      logger.error('Error creating student', { error, email: student.regEmail });
       throw error;
     }
   }
@@ -158,7 +159,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
         updatedAt: new Date()
       });
     } catch (error) {
-      console.error('Error updating email verification status:', error);
+      logger.error('Error updating email verification status', { error, rollNumber });
       throw error;
     }
   }
@@ -169,16 +170,16 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (!user) {
         throw new Error('No authenticated user found');
       }
-      
+
       await updatePassword(user, newPassword);
-      
+
       // Update the timestamp in Firestore using userId
       const studentRef = doc(db, this.studentsCollection, userId);
       await updateDoc(studentRef, {
         updatedAt: new Date()
       });
     } catch (error) {
-      console.error('Error updating password:', error);
+      logger.error('Error updating password', { error, userId });
       throw error;
     }
   }
@@ -188,7 +189,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Firebase will automatically send a password reset email
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      console.error('Error initiating password reset:', error);
+      logger.error('Error initiating password reset', { error, email });
       throw error;
     }
   }
@@ -198,7 +199,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Verify the password reset code
       return await verifyPasswordResetCode(auth, code);
     } catch (error) {
-      console.error('Error verifying reset code:', error);
+      logger.error('Error verifying reset code', { error });
       throw error;
     }
   }
@@ -208,7 +209,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // Confirm the password reset
       await confirmPasswordReset(auth, code, newPassword);
     } catch (error) {
-      console.error('Error confirming password reset:', error);
+      logger.error('Error confirming password reset', { error });
       throw error;
     }
   }

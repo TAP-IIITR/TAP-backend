@@ -1,5 +1,6 @@
 import { AuthenticatedRequest } from "../../types/express";
 import { RequestHandler, Response, NextFunction } from "express";
+import logger from "../../utils/logger";
 import {
   collection,
   doc,

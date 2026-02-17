@@ -19,6 +19,7 @@ import { db } from "../../config/firebase";
 import { BadRequestError } from "../../errors/Bad-Request-Error";
 import { NotFoundError } from "../../errors/Not-Found-Error";
 import { v4 as uuidv4 } from "uuid";
+import logger from "../../utils/logger";
 
 import { sendEmail, generateJobNotificationEmail } from "../../utils/ses";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -42,6 +43,7 @@ export const createJob: RequestHandler = async (
 ) => {
   try {
     if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
+      logger.warn(`Unauthorized job creation attempt by user ${req.user?.id}`);
       res.status(403).json({
         success: false,
         message: "Access forbidden. TAP Coordinator or TPO access required.",
@@ -49,7 +51,6 @@ export const createJob: RequestHandler = async (
       return;
     }
     const { jobData } = req.body;
-    console.log("jobData", jobData);
     if (!jobData) {
       throw new BadRequestError("Job data is required");
     }
@@ -114,7 +115,7 @@ export const createJob: RequestHandler = async (
 
       const s3Response = await fetch(uploadUrl, {
         method: "PUT",
-        body: req.file.buffer,
+        body: req.file.buffer as any,
         headers: {
           "Content-Type": "application/pdf",
           "Content-Length": req.file.size.toString(),
@@ -272,16 +273,13 @@ export const getJobById: RequestHandler = async (
     }
 
     const jobData = jobDoc.data();
-    // console.log("jobData", jobData);
-    // console.log("jobData", jobData);
     let allApplications = [];
     for (const application of jobData.applications) {
-      // console.log("application", application);
       const applicationRef = collection(db, "jobApplications");
       const q = query(applicationRef, where("id", "==", application.id));
       const applicationSnap = await getDocs(q);
       const applicationDoc = applicationSnap.docs[0];
-      if (applicationDoc.exists()) {
+      if (applicationDoc && applicationDoc.exists()) {
         allApplications.push(applicationDoc.data());
       }
     }
@@ -397,7 +395,6 @@ export const getAllApplications: RequestHandler = async (
   next: NextFunction
 ) => {
   try {
-    console.log("in getallapplications ");
     if (req.user?.role !== "tap" && req.user?.role !== "tpo") {
       res.status(403).json({
         success: false,
@@ -430,8 +427,6 @@ export const getAllApplications: RequestHandler = async (
 
       allApplications.push({ ...jobApplicationData, job: jobData });
     }
-
-    // console.log("allApplications ", allApplications);
 
     if (allApplications.length === 0) {
       res.status(200).json({
@@ -659,11 +654,10 @@ export const updateApplicationStatus: RequestHandler = async (
       (app: any) => app.student === studentId
     );
 
-    console.log(`Updating status for Job: ${jobId}, Student: ${studentId}`);
-    // console.log("Applications in Job:", applications.map((a: any) => a.student));
+    logger.info(`Updating status for Job: ${jobId}, Student: ${studentId} to ${status}`);
 
     if (applicationIndex === -1) {
-      console.error("Application not found in job document. Available students:", applications.map((a: any) => a.student));
+      logger.error("Application not found in job document", { jobId, studentId, availableStudents: applications.map((a: any) => a.student) });
       throw new NotFoundError("Application not found");
     }
 
@@ -789,7 +783,7 @@ const sendJobNotificationsToEligibleStudents = async (jobId: string) => {
     }
   });
 
-  console.log(`Found ${eligibleStudents} eligible students for job ${jobId}`);
+  logger.info(`Found ${eligibleStudents} eligible students for job ${jobId}`);
 
   // Send emails (if there are eligible students)
   if (eligibleEmails.length > 0) {
@@ -800,11 +794,9 @@ const sendJobNotificationsToEligibleStudents = async (jobId: string) => {
       try {
         await sendEmail(batch, subject, htmlBody, textBody);
         emailsSent += batch.length;
-        console.log(
-          `Sent email batch ${i / batchSize + 1} (${batch.length} emails)`
-        );
+        logger.info(`Sent email batch ${i / batchSize + 1} (${batch.length} emails)`);
       } catch (error) {
-        console.error(`Error sending email batch ${i / batchSize + 1}:`, error);
+        logger.error(`Error sending email batch ${i / batchSize + 1}`, { error });
       }
     }
   }

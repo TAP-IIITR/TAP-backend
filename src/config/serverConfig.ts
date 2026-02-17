@@ -1,5 +1,6 @@
 // src/config/server.config.ts
 import dotenv from "dotenv";
+import logger from "../utils/logger";
 dotenv.config();
 
 export const SERVER_CONFIG = {
@@ -51,7 +52,7 @@ requiredEnvVars.forEach((envVar) => {
   const configValue = process.env[envVar];
 
   if (!configValue) {
-    console.error(`Error: Environment variable ${envVar} is required`);
+    logger.error(`Environment variable ${envVar} is required`);
     process.exit(1);
   }
 });
@@ -73,23 +74,11 @@ requiredEnvVars.forEach((envVar) => {
 
 // Helper function to validate config at runtime
 export const validateConfig = () => {
-  console.log("Current configuration:", {
-    ...SERVER_CONFIG,
-    FIREBASE: {
-      ...SERVER_CONFIG.FIREBASE,
-      API_KEY: "**********",
-    },
-    JWT_SECRET: "**********",
-    COOKIE_SECRET: "**********",
-  });
-
   if (
     SERVER_CONFIG.NODE_ENV === "production" &&
     SERVER_CONFIG.CORS_ORIGIN === "*"
   ) {
-    console.warn("Warning: CORS is set to allow all origins in production");
   }
 };
-// console.log("Firebase Config:", SERVER_CONFIG.FIREBASE);
 
 export default SERVER_CONFIG;
