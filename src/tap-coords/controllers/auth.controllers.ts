@@ -162,9 +162,9 @@ export const logout: RequestHandler = async (
     const userId = req.user?.id;
     const role = req.user?.role;
 
-    if (!userId || role !== "tap") {
+    if (!userId || (role !== "tap" && role !== "tpo")) {
       throw new AuthError(
-        "Unauthorized: Only TAP coordinators can logout here"
+        "Unauthorized: Only TAP coordinators or TPO can logout here"
       );
     }
 
