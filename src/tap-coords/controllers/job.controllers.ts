@@ -449,14 +449,14 @@ export const getAllApplications: RequestHandler = async (
 
     const applicationsWithDetails = await Promise.all(
       allApplications.map(async (app: any) => {
-        if (!app.student || typeof app.student !== 'string') {
+        if (!app.studentId || typeof app.studentId !== "string") {
           return { ...app, student: "Invalid Student Data" };
         }
-        const studentRef = doc(db, "students", app.student);
+        const studentRef = doc(db, "students", app.studentId);
         const studentDoc = await getDoc(studentRef);
         const studentData = studentDoc.exists() ? studentDoc.data() : null;
 
-        const cgpaRef = doc(db, "cgpa", app.student.toUpperCase());
+        const cgpaRef = doc(db, "CGPA", app.studentId.toUpperCase());
         const cgpaDoc = await getDoc(cgpaRef);
         const cgpaData = cgpaDoc.exists() ? cgpaDoc.data() : null;
 
@@ -641,6 +641,9 @@ export const updateApplicationStatus: RequestHandler = async (
       );
     }
 
+    // Normalize status to Title Case for consistency with "Pending"
+    const normalizedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+
     const jobRef = doc(db, "jobs", jobId);
     const jobDoc = await getDoc(jobRef);
 
@@ -661,7 +664,7 @@ export const updateApplicationStatus: RequestHandler = async (
       throw new NotFoundError("Application not found");
     }
 
-    applications[applicationIndex].status = status;
+    applications[applicationIndex].status = normalizedStatus;
     await updateDoc(jobRef, {
       applications,
       updatedAt: serverTimestamp(),
@@ -671,13 +674,13 @@ export const updateApplicationStatus: RequestHandler = async (
     const jobApplicationsQuery = query(
       collection(db, "jobApplications"),
       where("jobId", "==", jobId),
-      where("student", "==", studentId)
+      where("studentId", "==", studentId)
     );
     const jobApplicationsSnap = await getDocs(jobApplicationsQuery);
     if (!jobApplicationsSnap.empty) {
       const jobApplicationRef = jobApplicationsSnap.docs[0].ref;
       await updateDoc(jobApplicationRef, {
-        status,
+        status: normalizedStatus,
         updatedAt: serverTimestamp(),
       });
     }

@@ -41,8 +41,11 @@ router.post(
 );
 
 // Other routes remain unchanged
-router.get('/', checkTapAuth, validateRequest, getAllJobs);
+// Static routes first to avoid shadow by :id
 router.get('/applications', checkTapAuth, validateRequest, getAllApplications);
+router.get("/pending-verifications", checkTapAuth, getPendingVerifications);
+
+router.get('/', checkTapAuth, validateRequest, getAllJobs);
 router.get('/:id', checkTapAuth, validateRequest, getJobById);
 router.put(
   '/:id',
@@ -82,7 +85,6 @@ router.put(
   validateRequest,
   updateApplicationStatus
 );
-router.get("/pending-verifications", checkTapAuth, getPendingVerifications);
 
 router.delete(
   '/:id',
@@ -91,7 +93,6 @@ router.delete(
   validateRequest,
   deleteJob
 );
-router.get('/pending-verifications', checkTapAuth, getPendingVerifications);
 
 router.put(
   '/verify/:id',
