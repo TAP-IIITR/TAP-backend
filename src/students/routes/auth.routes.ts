@@ -13,6 +13,82 @@ import { validateRequest } from "../../middleware/validation.middleware";
 
 const router = Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Student Auth
+ *   description: Student authentication and account management
+ */
+
+/**
+ * @swagger
+ * /api/auth/student/register:
+ *   post:
+ *     summary: Register a new student
+ *     tags: [Student Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reg_email
+ *               - personal_email
+ *               - password
+ *               - first_name
+ *               - last_name
+ *               - mobile
+ *               - linkedin
+ *             properties:
+ *               reg_email:
+ *                 type: string
+ *               personal_email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *               linkedin:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Student registered successfully
+ *       400:
+ *         description: Invalid input
+ */
+
+/**
+ * @swagger
+ * /api/auth/student/login:
+ *   post:
+ *     summary: Student login
+ *     tags: [Student Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reg_email
+ *               - password
+ *             properties:
+ *               reg_email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Unauthorized
+ */
+
 // Validation rules
 const registerValidation = [
   body("reg_email")

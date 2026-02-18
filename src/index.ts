@@ -10,6 +10,8 @@ import dotenv from "dotenv";
 import { rateLimit } from "express-rate-limit";
 import logger from './utils/logger';
 import { requestLogger } from './middleware/requestLogger';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 
 const limiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -43,6 +45,9 @@ app.use(
 
 // Parses cookies before routes
 app.use(cookieParser());
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Student routes
 import { authRouter } from "./students/routes/auth.routes";
