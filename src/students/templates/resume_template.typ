@@ -12,6 +12,10 @@
     hyphenate: false,
   )
 
+
+
+
+
   // Name and Contact Info
   align(center)[
     #block(text(weight: "bold", size: 24pt)[#info.name])
