@@ -29,13 +29,13 @@ export const generateResumePreview = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const data: ResumeData = req.body;
+    const { resumeData, template }: { resumeData: ResumeData, template?: string } = req.body;
 
-    if (!data.personalInfo || !data.education) {
+    if (!resumeData || !resumeData.personalInfo || !resumeData.education) {
       throw new BadRequestError('Missing required resume data');
     }
 
-    const pdfBuffer = await resumeGeneratorService.generatePdf(data);
+    const pdfBuffer = await resumeGeneratorService.generatePdf(resumeData, template);
 
     res.contentType('application/pdf');
     res.send(pdfBuffer);
@@ -51,7 +51,7 @@ export const saveGeneratedResume = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const data: ResumeData = req.body;
+    const { resumeData, template }: { resumeData: ResumeData, template?: string } = req.body;
     const rollNumber = req.user?.id;
 
     if (!rollNumber) {
@@ -62,7 +62,7 @@ export const saveGeneratedResume = async (
       throw new BadRequestError('Missing AWS configuration');
     }
 
-    const pdfBuffer = await resumeGeneratorService.generatePdf(data);
+    const pdfBuffer = await resumeGeneratorService.generatePdf(resumeData, template);
 
     const key = `resumes/${rollNumber}/resume.pdf`;
     const putObjectCommand = new PutObjectCommand({

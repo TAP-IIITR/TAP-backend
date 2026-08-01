@@ -14,12 +14,15 @@ export interface ResumeData {
     phone: string;
     linkedin: string;
     github?: string;
+    rollNumber?: string;
+    course?: string;
   };
   education: Array<{
     institution: string;
     degree: string;
     location: string;
     date: string;
+    cgpa?: string;
     description?: string;
   }>;
   experience: Array<{
@@ -34,6 +37,7 @@ export interface ResumeData {
     date: string;
     description: string;
     link?: string;
+    techStack?: string;
   }>;
   skills: Array<{
     category: string;
@@ -43,11 +47,13 @@ export interface ResumeData {
 }
 
 export class ResumeGeneratorService {
-  private templatePath: string;
+  private typstTemplatePath: string;
+  private latexTemplatePath: string;
   private tempDir: string;
 
   constructor() {
-    this.templatePath = path.join(__dirname, '../templates/resume_template.typ');
+    this.typstTemplatePath = path.join(__dirname, '../templates/resume_template.typ');
+    this.latexTemplatePath = path.join(__dirname, '../templates/resume_professional.tex');
     this.tempDir = path.join(__dirname, '../../../temp/resumes');
 
     if (!fs.existsSync(this.tempDir)) {
@@ -55,13 +61,36 @@ export class ResumeGeneratorService {
     }
   }
 
-  async generatePdf(data: ResumeData): Promise<Buffer> {
+  private latexEscape(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/\\/g, '\\textbackslash ')
+      .replace(/&/g, '\\&')
+      .replace(/%/g, '\\%')
+      .replace(/\$/g, '\\$')
+      .replace(/#/g, '\\#')
+      .replace(/_/g, '\\_')
+      .replace(/{/g, '\\{')
+      .replace(/}/g, '\\}')
+      .replace(/~/g, '\\textasciitilde ')
+      .replace(/\^/g, '\\textasciicircum ')
+      .replace(/"/g, "''");
+  }
+
+  async generatePdf(data: ResumeData, templateType: string = 'classic'): Promise<Buffer> {
+    if (templateType === 'professional') {
+      return this.generateLatexPdf(data);
+    }
+    return this.generateTypstPdf(data);
+  }
+
+  private async generateTypstPdf(data: ResumeData): Promise<Buffer> {
     const id = uuidv4();
     const typFile = path.join(this.tempDir, `${id}.typ`);
     const pdfFile = path.join(this.tempDir, `${id}.pdf`);
 
     try {
-      let template = fs.readFileSync(this.templatePath, 'utf-8');
+      let template = fs.readFileSync(this.typstTemplatePath, 'utf-8');
 
       // Inject personal info
       template = template.replace('$NAME$', data.personalInfo.name);
@@ -140,12 +169,114 @@ export class ResumeGeneratorService {
       return pdfBuffer;
 
     } catch (error) {
-      logger.error('Error in ResumeGeneratorService.generatePdf', { error });
+      logger.error('Error in ResumeGeneratorService.generateTypstPdf', { error });
       throw error;
     } finally {
       // Cleanup
       if (fs.existsSync(typFile)) fs.unlinkSync(typFile);
       if (fs.existsSync(pdfFile)) fs.unlinkSync(pdfFile);
+    }
+  }
+
+  private async generateLatexPdf(data: ResumeData): Promise<Buffer> {
+    const id = uuidv4();
+    const texFile = path.join(this.tempDir, `${id}.tex`);
+    const pdfFile = path.join(this.tempDir, `${id}.pdf`);
+    const templateDir = path.dirname(this.latexTemplatePath);
+
+    try {
+      let template = fs.readFileSync(this.latexTemplatePath, 'utf-8');
+
+      // Helper for escaping
+      const esc = (t: string) => this.latexEscape(t);
+
+      // Inject personal info
+      template = template.replace(/\$NAME\$/g, esc(data.personalInfo.name));
+      template = template.replace(/\$EMAIL\$/g, esc(data.personalInfo.email || ''));
+      template = template.replace(/\$PHONE\$/g, esc(data.personalInfo.phone || ''));
+      template = template.replace(/\$LINKEDIN\$/g, esc(data.personalInfo.linkedin || ''));
+      template = template.replace(/\$GITHUB\$/g, esc(data.personalInfo.github || ''));
+      template = template.replace(/\$ROLL\$/g, esc(data.personalInfo.rollNumber || 'N/A'));
+      template = template.replace(/\$COURSE\$/g, esc(data.personalInfo.course || 'Bachelor of Technology'));
+      template = template.replace(/\$EMAIL_B\$/g, esc(data.personalInfo.email || '')); // Fallback
+
+      // Inject Education
+      const educationStr = data.education.map(ed => `
+    \\resumeSubheading
+      {${esc(ed.institution)}}{CGPA: ${esc(ed.cgpa || "N/A")}}
+      {${esc(ed.degree)}}{${esc(ed.date)}}
+      `).join('\n');
+      template = template.replace('$EDUCATION$', educationStr);
+
+      // Inject Experience
+      const experienceStr = data.experience.map(exp => `
+\\resumeSubheading
+{${esc(exp.company)}}{${esc(exp.date)}}
+{${esc(exp.role)}}{${esc(exp.location)}}
+\\resumeItemListStart
+${exp.description.split('\n').filter(line => line.trim()).map(line => `\\item ${esc(line.trim())}`).join('\n')}
+\\resumeItemListEnd
+      `).join('\n');
+      template = template.replace('$EXPERIENCE$', experienceStr);
+
+      // Inject Projects
+      const projectsStr = data.projects.map(proj => `
+\\resumeProject
+{${esc(proj.name)}}
+{${esc(proj.techStack || "")}}
+{${esc(proj.link || "")}}
+{${esc(proj.date)}}
+\\resumeItemListStart
+${proj.description.split('\n').filter(line => line.trim()).map(line => `\\item ${esc(line.trim())}`).join('\n')}
+\\resumeItemListEnd
+      `).join('\n');
+      template = template.replace('$PROJECTS$', projectsStr);
+
+      // Inject Skills
+      const skillsStr = data.skills.map(skill => `
+     \\textbf{${esc(skill.category)}:} ${esc(skill.items.join(', '))} \\\\
+      `).join('\n');
+      template = template.replace('$SKILLS$', skillsStr);
+
+      // Inject Achievements
+      const achievementsStr = data.achievements ? data.achievements.map(a => `
+\\resumePOR{}{${esc(a)}}{}
+      `).join('\n') : "";
+      template = template.replace('$ACHIEVEMENTS$', achievementsStr);
+
+      fs.writeFileSync(texFile, template);
+
+      // Copy logo.png to temp dir for compilation
+      const logoSource = path.join(templateDir, 'logo.png');
+      const logoDest = path.join(this.tempDir, 'logo.png');
+      if (fs.existsSync(logoSource) && !fs.existsSync(logoDest)) {
+        fs.copyFileSync(logoSource, logoDest);
+      }
+
+      // Compile LaTeX to PDF
+      // We run it twice to resolve references if any, though here it's likely fine with once
+      await execPromise(`pdflatex -interaction=nonstopmode -output-directory="${this.tempDir}" "${texFile}"`);
+      
+      if (!fs.existsSync(pdfFile)) {
+        throw new Error('LaTeX compilation failed to produce PDF');
+      }
+
+      const pdfBuffer = fs.readFileSync(pdfFile);
+      return pdfBuffer;
+
+    } catch (error) {
+      logger.error('Error in ResumeGeneratorService.generateLatexPdf', { error });
+      throw error;
+    } finally {
+      // Cleanup
+      if (fs.existsSync(texFile)) fs.unlinkSync(texFile);
+      if (fs.existsSync(pdfFile)) fs.unlinkSync(pdfFile);
+      const auxFile = texFile.replace('.tex', '.aux');
+      const logFile = texFile.replace('.tex', '.log');
+      const outFile = texFile.replace('.tex', '.out');
+      if (fs.existsSync(auxFile)) fs.unlinkSync(auxFile);
+      if (fs.existsSync(logFile)) fs.unlinkSync(logFile);
+      if (fs.existsSync(outFile)) fs.unlinkSync(outFile);
     }
   }
 }
