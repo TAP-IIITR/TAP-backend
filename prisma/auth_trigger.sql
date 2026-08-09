@@ -6,6 +6,12 @@
 -- backend via service role BEFORE the account is usable), this creates the
 -- matching `coordinators` row. Student rows are created by the backend on
 -- registration (they need profile data from the Excel import).
+--
+-- NOTE: GoTrue's ADMIN createUser path (used by /api/auth/coordinators and
+-- /api/auth/students) runs with session_replication_role=replica, which
+-- SUPPRESSES this trigger. Those routes therefore create the coordinators/
+-- students rows in application code; this trigger is a safety net for users
+-- created manually in the Supabase dashboard.
 -- ============================================================================
 
 create or replace function public.handle_new_coordinator()

@@ -1,8 +1,6 @@
 import express from "express";
 import "express-async-errors";
 import cors from "cors";
-import './config/firebase'; // Initialize Firebase Client
-import './config/firebaseAdmin'; // Initialize Firebase Admin
 import { SERVER_CONFIG } from './config/serverConfig';
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/Error-Handler-Middleware";
@@ -53,29 +51,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 import { authRouter as supabaseAuthRouter } from "./auth/routes/auth.routes";
 app.use("/api/auth", supabaseAuthRouter);
 
-// Student routes
-import { authRouter } from "./students/routes/auth.routes";
-import { dashboardRouter } from "./students/routes/dashboard.routes";
-import { jobRouter } from "./students/routes/job.routes";
-import { resumeRouter } from "./students/routes/resume.routes";
+// Coordinator CRM API (Phase B) — Supabase/Prisma
+import { crmRouter } from "./crm/routes";
+app.use("/api/crm", crmRouter);
 
-app.use("/api/student/resume", resumeRouter);
-app.use("/api/auth/student", authRouter);
-app.use("/api/dashboard/student", dashboardRouter);
-app.use("/api/jobs/student", jobRouter);
-
-// TAP Coordinator routes
-import { tapAuthRouter } from "./tap-coords/routes/auth.routes";
-import { tapDashboardRouter } from "./tap-coords/routes/dashboard.routes";
-import { tapJobRouter } from "./tap-coords/routes/job.routes";
-import { tapRecruiterRouter } from "./tap-coords/routes/recruiter.routes";
-import { tapStudentRouter } from "./tap-coords/routes/student.routes";
-
-app.use("/api/auth/tap", tapAuthRouter);
-app.use("/api/dashboard/tap", tapDashboardRouter);
-app.use("/api/jobs/tap", tapJobRouter);
-app.use("/api/recruiter/tap", tapRecruiterRouter);
-app.use("/api/student/tap", tapStudentRouter);
+// Student portal API (Phase C) — Supabase/Prisma
+import { studentPortalRouter } from "./student/routes";
+app.use("/api/student", studentPortalRouter);
 
 app.get("/", (req, res) => {
   res.status(200).json({
