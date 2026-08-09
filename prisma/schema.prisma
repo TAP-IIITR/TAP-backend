@@ -1,0 +1,293 @@
+// TAP Placement CRM — Prisma schema (Supabase/Postgres)
+// Source of truth: Placement Record.xlsx (9 sheets)
+// Docs: PLACEMENT_CRM_PLAN.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUMS (from the Lookup sheet)
+// ---------------------------------------------------------------------------
+
+enum Branch {
+  CSE
+  ECE
+  CSE_DSAI // CSE with Specialization Data Science and AI
+  ECE_ESIOT // ECE with Specialization Embedded Systems and IoT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum OpportunityType {
+  ON_CAMPUS
+  OFF_CAMPUS
+}
+
+enum EmploymentType {
+  INTERNSHIP
+  PPO
+  FULL_TIME
+}
+
+enum OpportunityStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  PENDING
+  CLEARED
+  REJECTED
+  SELECTED
+}
+
+enum RoundStatus {
+  NOT_ATTEMPTED
+  PENDING
+  CLEARED
+  REJECTED
+}
+
+enum OfferStatus {
+  ACCEPTED
+  DECLINED
+}
+
+enum Sector {
+  IT
+  CORE
+  CONSULTING
+  FINANCE
+  ANALYTICS
+}
+
+enum PlacementStatus {
+  PLACED
+  UNPLACED
+  NOT_ELIGIBLE
+}
+
+enum UserRole {
+  TPO
+  COORDINATOR
+  STUDENT
+}
+
+// ---------------------------------------------------------------------------
+// AUTH / USERS
+// ---------------------------------------------------------------------------
+
+// Linked to Supabase auth.users(id). Created via trigger after signup.
+model Coordinator {
+  id        String   @id // = supabase auth.users.id
+  name      String
+  email     String   @unique
+  role      UserRole @default(COORDINATOR) // TPO = super-admin
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  opportunities Opportunity[]
+
+  @@map("coordinators")
+}
+
+// ---------------------------------------------------------------------------
+// STUDENTS (Student_Master + Student_Status sheets)
+// ---------------------------------------------------------------------------
+model Student {
+  id             String   @id @default(cuid()) // internal StudentID
+  authUid        String?  @unique // supabase auth.users.id when the student has an account
+  registrationNo String   @unique // Registration No (roll number)
+  name           String
+  gender         Gender?
+  branch         Branch
+  batch          Int // graduating year, e.g. 2027
+  section        String?
+  cgpa           Decimal? @db.Decimal(4, 2)
+  activeBacklogs Int      @default(0)
+  mobile         String?
+  collegeEmail   String   @unique
+  personalEmail  String?
+  linkedin       String?
+  github         String?
+  resumeUrl      String? // Supabase Storage signed URL or public path
+  currentStatus  String? // free-text snapshot (optional; derived data lives in status)
+
+  // 1:1 with Student_Status sheet
+  status       StudentStatus?
+  applications Application[]
+  offers       Offer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branch, batch])
+  @@map("students")
+}
+
+model StudentStatus {
+  studentId              String          @id
+  registered             Boolean         @default(false)
+  placementEligible      Boolean         @default(false)
+  higherStudies          Boolean         @default(false)
+  governmentExams        Boolean         @default(false)
+  entrepreneur           Boolean         @default(false)
+  blacklisted            Boolean         @default(false)
+  currentPlacementStatus PlacementStatus @default(UNPLACED)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_status")
+}
+
+// ---------------------------------------------------------------------------
+// COMPANIES (Company_Master sheet)
+// ---------------------------------------------------------------------------
+
+model Company {
+  id      String  @id @default(cuid()) // CompanyID
+  name    String  @unique
+  sector  Sector?
+  website String?
+  hrName  String?
+  hrEmail String?
+  hrPhone String?
+  notes   String?
+
+  opportunities Opportunity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("companies")
+}
+
+// ---------------------------------------------------------------------------
+// OPPORTUNITIES (Opportunity_Master sheet)
+// ---------------------------------------------------------------------------
+
+model Opportunity {
+  id                   String            @id @default(cuid()) // OpportunityID
+  companyId            String
+  academicYear         String // e.g. "2026-27"
+  opportunityType      OpportunityType
+  employmentType       EmploymentType
+  role                 String
+  ctcLpa               Decimal?          @db.Decimal(10, 2)
+  stipendMonthly       Decimal?          @db.Decimal(10, 2)
+  eligibleBranches     Branch[]
+  minCgpa              Decimal?          @db.Decimal(4, 2)
+  registrationDeadline DateTime?
+  applicationLink      String?
+  portal               String?
+  driveDate            DateTime?
+  oaDate               DateTime?
+  interviewDate        DateTime?
+  venue                String?
+  coordinatorId        String? // assigned TAP coordinator (POC)
+  status               OpportunityStatus @default(OPEN)
+  jdUrl                String? // PDF JD in Supabase Storage
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  coordinator  Coordinator?  @relation(fields: [coordinatorId], references: [id])
+  applications Application[]
+  offers       Offer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([status, academicYear])
+  @@map("opportunities")
+}
+
+// ---------------------------------------------------------------------------
+// APPLICATIONS (Applications sheet) — the CRM pipeline
+// ---------------------------------------------------------------------------
+
+model Application {
+  id            String @id @default(cuid()) // ApplicationID
+  studentId     String
+  opportunityId String
+
+  applied             Boolean           @default(false)
+  applicationVerified Boolean           @default(false)
+  oaStatus            RoundStatus       @default(NOT_ATTEMPTED)
+  gdStatus            RoundStatus       @default(NOT_ATTEMPTED)
+  technicalRound      RoundStatus       @default(NOT_ATTEMPTED)
+  hrRound             RoundStatus       @default(NOT_ATTEMPTED)
+  offerReleased       Boolean           @default(false)
+  finalStatus         ApplicationStatus @default(APPLIED)
+  remarks             String?
+
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, opportunityId])
+  @@index([studentId])
+  @@index([opportunityId])
+  @@index([finalStatus])
+  @@map("applications")
+}
+
+// ---------------------------------------------------------------------------
+// OFFERS (Offers sheet)
+// ---------------------------------------------------------------------------
+
+model Offer {
+  id            String      @id @default(cuid()) // OfferID
+  studentId     String
+  opportunityId String
+  offerDate     DateTime?
+  finalCtcLpa   Decimal?    @db.Decimal(10, 2)
+  accepted      OfferStatus @default(ACCEPTED)
+  joiningDate   DateTime?
+  remarks       String?
+
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, opportunityId])
+  @@index([studentId])
+  @@index([opportunityId])
+  @@map("offers")
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT LOG — every mutation recorded (who/when/what)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  actorId   String // coordinator or student id
+  actorRole UserRole?
+  action    String // CREATE | UPDATE | DELETE | IMPORT | LOGIN ...
+  entity    String // students | companies | opportunities | applications | offers
+  entityId  String?
+  changes   Json? // before/after diff
+  createdAt DateTime  @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
