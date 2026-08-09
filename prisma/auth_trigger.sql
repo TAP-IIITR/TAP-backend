@@ -18,7 +18,7 @@ begin
   -- Only provision elevated roles; students are provisioned by the backend
   -- (their profile needs Excel-imported data).
   if (new.raw_app_meta_data ->> 'role') in ('COORDINATOR', 'TPO') then
-    insert into public.coordinators (id, name, email, role, is_active, "createdAt", "updatedAt")
+    insert into public.coordinators (id, name, email, role, "isActive", "createdAt", "updatedAt")
     values (
       new.id,
       coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),

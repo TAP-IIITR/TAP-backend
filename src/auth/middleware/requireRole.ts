@@ -38,7 +38,7 @@ const extractToken = (req: Request): string | null => {
  * via the service role / admin API) and cross-check coordinator/TPO roles
  * against the `coordinators` table before granting elevated access.
  */
-async function resolveRole(supabaseUserId: string): Promise<UserRole> {
+export async function resolveRole(supabaseUserId: string): Promise<UserRole> {
   const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(
     supabaseUserId
   );

@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { auth, db } from "../config/firebase";
 import { verifyJWT } from "../utils/jwt";
 import { AuthError } from "../errors/Auth-Error";
+import { ForbiddenError } from "../errors/Forbidden-Error";
+import { verifyAndAttachUser } from "../auth/middleware/requireRole";
 import { doc, getDoc } from "firebase/firestore";
 import { sendEmailVerification } from "firebase/auth";
-import logger from "../utils/logger";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -13,12 +14,42 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+/**
+ * Student guard for the legacy student endpoints.
+ *
+ * Accepts EITHER:
+ *  - the new Supabase access token (`Authorization: Bearer ...`) — verified
+ *    statelessly via Supabase (role resolves to STUDENT by default)
+ *  - the legacy cookie JWT (pre-migration clients)
+ *
+ * Attaches `req.user` with the legacy role names so existing controllers work.
+ */
 export const checkAuth = async (
   req: AuthenticatedRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) => {
   try {
+    const authHeader = req.headers.authorization;
+
+    // New Supabase path — Bearer token.
+    if (authHeader?.startsWith("Bearer ")) {
+      await verifyAndAttachUser(req as unknown as Parameters<typeof verifyAndAttachUser>[0]);
+      const sbUser = (req as unknown as { user?: { id: string; role: string } }).user;
+      if (!sbUser) {
+        throw new AuthError("Invalid authentication. Please login again.");
+      }
+      if (sbUser.role !== "STUDENT") {
+        throw new ForbiddenError("Unauthorized: Only students can access this resource.");
+      }
+      req.user = {
+        id: sbUser.id, // Supabase user id (matches Students FK column)
+        role: "student",
+      };
+      return next();
+    }
+
+    // Legacy cookie path (pre-migration clients).
     const token = req.cookies.token;
 
     if (!token) {

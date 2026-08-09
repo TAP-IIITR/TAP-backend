@@ -49,6 +49,10 @@ app.use(cookieParser());
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Supabase RBAC auth (Phase A) — replaces Firebase auth
+import { authRouter as supabaseAuthRouter } from "./auth/routes/auth.routes";
+app.use("/api/auth", supabaseAuthRouter);
+
 // Student routes
 import { authRouter } from "./students/routes/auth.routes";
 import { dashboardRouter } from "./students/routes/dashboard.routes";
